@@ -198,9 +198,10 @@ contract PermitRouter is IPermitRouter, ReentrancyGuard, EIP712 {
 
     function _useNonce(address owner, uint256 nonce) private {
         (uint256 wordPos, uint256 bitPos) = _noncePosition(nonce);
-        uint256 bit = 1 << bitPos;
-        uint256 flipped = _nonceBitmap[owner][wordPos] ^= bit;
-        // If the bit was already set (1 ^ 1 = 0), the nonce was already used.
-        if (flipped & bit == 0) revert NonceAlreadyUsed(nonce);
+        uint256 bit     = 1 << bitPos;
+        uint256 before  = _nonceBitmap[owner][wordPos];
+        // Revert if the bit is already set — nonce was previously consumed.
+        if (before & bit != 0) revert NonceAlreadyUsed(nonce);
+        _nonceBitmap[owner][wordPos] = before | bit;
     }
 }

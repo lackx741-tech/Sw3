@@ -235,7 +235,7 @@ contract SweeperTest is Test, StdInvariant {
     //  Pause
     // ─────────────────────────────────────────────────────────────────────────
 
-    function test_pause_preventsSweeep() public {
+    function test_pause_preventsSweep() public {
         vm.prank(pauser);
         sweeper.pause();
 
