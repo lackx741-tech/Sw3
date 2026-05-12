@@ -1,0 +1,176 @@
+# =============================================================================
+# Sw3 Monorepo — .gitignore
+# Covers: Node.js, TypeScript, Rust, Python, Foundry/Hardhat, Docker, editors
+# =============================================================================
+
+# ── Dependency directories ────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+# Keep .yarn/releases and .yarn/plugins if using Yarn Berry
+!.yarn/releases
+!.yarn/plugins
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+.svelte-kit/
+storybook-static/
+*.tsbuildinfo
+
+# ── Turborepo ─────────────────────────────────────────────────────────────────
+.turbo/
+
+# ── Test & coverage ───────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+*.lcov
+
+# ── TypeScript ────────────────────────────────────────────────────────────────
+*.js.map
+*.d.ts.map
+# Don't ignore declaration files in published packages
+!packages/**/dist/**/*.d.ts
+
+# ── Environment variables — NEVER commit real secrets ─────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+# Keep the example file
+!.env.example
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+*.log.*
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── OS / system files ─────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── Editor & IDE ──────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.swp
+*.swo
+*~
+*.kate-swp
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# ── Rust / Cargo ─────────────────────────────────────────────────────────────
+target/
+**/*.rs.bk
+Cargo.lock          # keep for binaries; remove this line for library crates
+*.pdb
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+dist/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+*.coverage
+.coverage.*
+htmlcov/
+
+# ── Foundry / Solidity ────────────────────────────────────────────────────────
+# Foundry build & cache
+out/
+cache/
+broadcast/*/dry-run/
+# Keep deployment artifacts
+!broadcast/**/*.json
+# Forge snapshots
+.gas-snapshot
+# Soldeer dependencies (like node_modules for Solidity)
+lib/
+dependencies/
+
+# ── Hardhat ───────────────────────────────────────────────────────────────────
+artifacts/
+cache/
+typechain-types/
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+.docker-volumes/
+
+# ── Databases / local state ───────────────────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+data/
+pgdata/
+redis-data/
+
+# ── Package manager locks (only pnpm-lock.yaml is tracked) ───────────────────
+package-lock.json
+yarn.lock
+# Keep pnpm lock
+!pnpm-lock.yaml
+
+# ── Miscellaneous ─────────────────────────────────────────────────────────────
+.cache/
+.parcel-cache/
+.rollup.cache/
+*.tgz
+*.tar.gz
+*.zip
+*.vsix
+.changeset/*.md
+!.changeset/README.md
+
+# ── Vercel / deployment ────────────────────────────────────────────────────────
+.vercel/
+.netlify/
+.wrangler/
