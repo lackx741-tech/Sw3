@@ -1,0 +1,23 @@
+# rust-toolchain.toml
+# Pins the Rust toolchain for all crates in this workspace.
+# `rustup` reads this file automatically when any `cargo` command is run.
+# Docs: https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file
+
+[toolchain]
+channel  = "1.79.0"          # Pin to a specific stable release for reproducibility
+
+# Extend with common components used across services
+components = [
+  "rustfmt",          # cargo fmt
+  "clippy",           # cargo clippy
+  "rust-src",         # IDE support (rust-analyzer)
+  "rust-analyzer",    # Language server
+  "llvm-tools-preview", # cargo-llvm-cov code coverage
+]
+
+# Cross-compilation targets — add/remove as needed
+targets = [
+  "x86_64-unknown-linux-gnu",    # Linux CI / production containers
+  "aarch64-unknown-linux-gnu",   # ARM64 (Apple Silicon, AWS Graviton)
+  "wasm32-unknown-unknown",      # WebAssembly (on-chain programs / WASM services)
+]

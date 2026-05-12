@@ -1,0 +1,42 @@
+{
+  "name": "@sw3/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for the Sw3 enterprise ERC-20 sweeping platform",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "require": "./src/index.ts",
+      "types": "./src/index.ts"
+    },
+    "./core": "./src/core/client.ts",
+    "./wallet": "./src/wallet/connector.ts",
+    "./auth": "./src/auth/siwe.ts",
+    "./execution": "./src/execution/executor.ts",
+    "./rpc": "./src/rpc/provider.ts",
+    "./analytics": "./src/analytics/tracker.ts",
+    "./api": "./src/api/client.ts",
+    "./utils": "./src/utils/format.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "clean": "rimraf dist .tsbuildinfo"
+  },
+  "dependencies": {
+    "@sw3/config": "workspace:*",
+    "@sw3/shared-types": "workspace:*",
+    "viem": "^2.17.0",
+    "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0",
+    "viem": ">=2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  }
+}

@@ -1,0 +1,115 @@
+{
+  // tsconfig.base.json — Strict TypeScript base configuration.
+  // All workspace packages should extend this file, then layer their own
+  // framework-specific settings on top.
+  //
+  // Usage in a workspace package:
+  //   { "extends": "../../tsconfig.base.json", "compilerOptions": { ... } }
+
+  "$schema": "https://json.schemastore.org/tsconfig",
+
+  "compilerOptions": {
+    // ── Language & output target ─────────────────────────────────────────
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+
+    // ── Strict type-checking ─────────────────────────────────────────────
+    // Enable all strict checks individually so they are explicit.
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "useUnknownInCatchVariables": true,
+
+    // ── Additional pedantic checks ───────────────────────────────────────
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "exactOptionalPropertyTypes": true,
+
+    // ── Modules & interop ────────────────────────────────────────────────
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": false,
+    "verbatimModuleSyntax": false,
+
+    // ── JSX (overridden per-package for React/server-components) ─────────
+    "jsx": "preserve",
+    "jsxImportSource": "react",
+
+    // ── Declaration & source maps ────────────────────────────────────────
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "inlineSources": false,
+
+    // ── Output ───────────────────────────────────────────────────────────
+    // Each package sets its own "outDir" and "rootDir".
+    "composite": true,
+    "incremental": true,
+
+    // ── Decorators ───────────────────────────────────────────────────────
+    // Needed by NestJS / TypeORM services.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    // ── Skip lib checks for speed ────────────────────────────────────────
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // ── Path aliases ─────────────────────────────────────────────────────
+    // Packages should re-declare the aliases relevant to their scope.
+    // These root-level aliases cover shared packages.
+    "baseUrl": ".",
+    "paths": {
+      // Shared packages
+      "@sw3/ui": ["packages/ui/src/index.ts"],
+      "@sw3/ui/*": ["packages/ui/src/*"],
+      "@sw3/config": ["packages/config/src/index.ts"],
+      "@sw3/config/*": ["packages/config/src/*"],
+      "@sw3/utils": ["packages/utils/src/index.ts"],
+      "@sw3/utils/*": ["packages/utils/src/*"],
+      "@sw3/types": ["packages/types/src/index.ts"],
+      "@sw3/types/*": ["packages/types/src/*"],
+      "@sw3/hooks": ["packages/hooks/src/index.ts"],
+      "@sw3/hooks/*": ["packages/hooks/src/*"],
+      "@sw3/contracts": ["packages/contracts/src/index.ts"],
+      "@sw3/contracts/*": ["packages/contracts/src/*"],
+      "@sw3/db": ["packages/db/src/index.ts"],
+      "@sw3/db/*": ["packages/db/src/*"],
+      "@sw3/auth": ["packages/auth/src/index.ts"],
+      "@sw3/auth/*": ["packages/auth/src/*"],
+
+      // Convenience aliases within a package (must also be set in each tsconfig)
+      "@/*": ["./src/*"],
+      "~/*": ["./src/*"]
+    }
+  },
+
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "dist",
+    "**/dist",
+    ".next",
+    "**/.next",
+    "out",
+    "**/out",
+    "build",
+    "**/build",
+    "coverage",
+    "**/.turbo",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}

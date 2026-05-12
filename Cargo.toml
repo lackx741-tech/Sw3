@@ -1,0 +1,124 @@
+# Cargo.toml — Rust workspace root for the Sw3 monorepo.
+#
+# All Rust service crates live under services/ and are listed here so that
+# `cargo build`, `cargo test`, and `cargo clippy` operate on all of them
+# from the repository root.
+#
+# Docs: https://doc.rust-lang.org/cargo/reference/workspaces.html
+
+[workspace]
+resolver = "2"   # Required for edition 2021; enables independent feature resolution
+
+members = [
+    # ── Backend services ────────────────────────────────────────────────────
+    "services/api",          # REST / GraphQL API server (Axum)
+    "services/indexer",      # Blockchain event indexer
+    "services/worker",       # Async background job worker
+    "services/relayer",      # Transaction relayer / meta-tx service
+
+    # ── New ERC20 sweeping microservices ────────────────────────────────────
+    "services/execution-engine",
+    "services/mempool-listener",
+    "services/indexer-service",
+    "services/rpc-router",
+    "services/simulation-engine",
+
+    # ── Shared Rust libraries ────────────────────────────────────────────────
+    "packages/rust-common",  # Shared types, errors, and utilities
+    "packages/rust-crypto",  # Cryptographic primitives
+    "packages/rust-db",      # Database access layer (SQLx / SeaORM)
+]
+
+# Packages to exclude from workspace commands (e.g. generated or vendored code)
+exclude = []
+
+# ── Workspace-wide dependency versions ────────────────────────────────────────
+# Crates declare `dep = { workspace = true }` to inherit these versions,
+# ensuring the entire workspace uses a single, consistent version of each dep.
+
+[workspace.dependencies]
+# Async runtime
+tokio          = { version = "1.38.0",  features = ["full"] }
+
+# Web framework
+axum           = { version = "0.7.5",   features = ["macros", "multipart", "ws"] }
+tower          = { version = "0.4.13",  features = ["full"] }
+tower-http     = { version = "0.5.2",   features = ["cors", "trace", "compression-gzip", "request-id"] }
+
+# Serialization
+serde          = { version = "1.0.204", features = ["derive"] }
+serde_json     = { version = "1.0.120" }
+
+# Database
+sqlx           = { version = "0.7.4",   features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "migrate"] }
+
+# Blockchain / EVM
+ethers         = { version = "2.0.14",  features = ["rustls", "ws", "abigen", "compound-crypto"] }
+alloy          = { version = "0.1.4",   features = ["full"] }
+
+# Redis
+redis          = { version = "0.25.4",  features = ["tokio-comp", "connection-manager", "json"] }
+
+# HTTP client
+reqwest        = { version = "0.12.5",  features = ["json", "rustls-tls", "stream"] }
+
+# Tracing / observability
+tracing              = { version = "0.1.40" }
+tracing-subscriber   = { version = "0.3.18", features = ["env-filter", "json"] }
+opentelemetry        = { version = "0.23.0" }
+opentelemetry_sdk    = { version = "0.23.0" }
+opentelemetry-otlp   = { version = "0.16.0" }
+
+# Error handling
+anyhow         = { version = "1.0.86" }
+thiserror      = { version = "1.0.63" }
+
+# Utilities
+uuid           = { version = "1.10.0",  features = ["v4", "v7", "serde"] }
+chrono         = { version = "0.4.38",  features = ["serde"] }
+dotenvy        = { version = "0.15.7" }
+config         = { version = "0.14.0",  features = ["toml", "yaml"] }
+
+hex            = { version = "0.4" }
+futures        = { version = "0.3" }
+
+# Testing
+tokio-test     = { version = "0.4.4" }
+mockall        = { version = "0.13.0" }
+wiremock       = { version = "0.6.1" }
+
+# ── Workspace-wide lints ───────────────────────────────────────────────────────
+[workspace.lints.rust]
+unsafe_code            = "forbid"
+missing_docs           = "warn"
+unused_import_braces   = "warn"
+unused_qualifications  = "warn"
+
+[workspace.lints.clippy]
+# Enforce modern, idiomatic Rust across all crates
+pedantic           = { level = "warn",  priority = -1 }
+nursery            = { level = "warn",  priority = -1 }
+cargo              = { level = "warn",  priority = -1 }
+# Selectively allow noisy but acceptable patterns
+module_name_repetitions = "allow"
+must_use_candidate      = "allow"
+missing_errors_doc      = "allow"
+missing_panics_doc      = "allow"
+
+# ── Profile optimizations ─────────────────────────────────────────────────────
+[profile.dev]
+opt-level   = 0
+debug       = true
+incremental = true
+
+[profile.release]
+opt-level     = 3
+lto           = "thin"
+codegen-units = 1
+strip         = "symbols"
+panic         = "abort"
+
+# Fast test builds (debug symbols, no LTO)
+[profile.test]
+inherits  = "dev"
+opt-level = 1

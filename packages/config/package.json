@@ -1,0 +1,30 @@
+{
+  "name": "@sw3/config",
+  "version": "0.1.0",
+  "description": "Platform-wide configuration constants, chain configs, and contract addresses for Sw3",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./chains": "./src/chains.ts",
+    "./contracts": "./src/contracts.ts",
+    "./constants": "./src/constants.ts",
+    "./env": "./src/env.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "clean": "rimraf dist .tsbuildinfo"
+  },
+  "dependencies": {
+    "@sw3/shared-types": "workspace:*",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  }
+}

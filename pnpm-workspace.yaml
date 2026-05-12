@@ -1,0 +1,13 @@
+# pnpm-workspace.yaml
+# Declares all workspace packages for this monorepo.
+# See: https://pnpm.io/workspaces
+
+packages:
+  # Frontend / fullstack applications
+  - "apps/*"
+
+  # Shared libraries, UI kits, utilities, and config packages
+  - "packages/*"
+
+  # Backend services (API servers, workers, indexers, etc.)
+  - "services/*"

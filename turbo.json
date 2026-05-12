@@ -1,0 +1,159 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  // Turborepo pipeline configuration for the Sw3 monorepo.
+  // Docs: https://turbo.build/repo/docs/reference/configuration
+
+  "globalEnv": [
+    // Node environment — affects all tasks
+    "NODE_ENV",
+    "CI",
+
+    // Telemetry / observability
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "SENTRY_DSN",
+    "SENTRY_ENVIRONMENT",
+
+    // Auth
+    "NEXTAUTH_SECRET",
+    "NEXTAUTH_URL",
+
+    // Databases (connection strings alter build output)
+    "DATABASE_URL",
+    "REDIS_URL",
+
+    // Blockchain / Web3
+    "NEXT_PUBLIC_CHAIN_ID",
+    "NEXT_PUBLIC_RPC_URL",
+    "NEXT_PUBLIC_CONTRACT_ADDRESS"
+  ],
+
+  // Paths that are always considered "global" inputs (changes invalidate all tasks)
+  "globalDependencies": [
+    ".env",
+    ".env.local",
+    "tsconfig.base.json",
+    "pnpm-lock.yaml"
+  ],
+
+  "pipeline": {
+    // ── build ───────────────────────────────────────────────────────────────
+    // Packages must build before downstream consumers.
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "public/**", "*.config.*", "tsconfig.json"],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**",
+        "build/**",
+        "out/**",
+        "storybook-static/**"
+      ],
+      "env": [
+        "ANALYZE",
+        "NEXT_PUBLIC_*",
+        "VITE_*"
+      ]
+    },
+
+    // ── dev ─────────────────────────────────────────────────────────────────
+    // Dev servers are persistent — no caching, run in parallel.
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true,
+      "env": [
+        "PORT",
+        "HOST",
+        "NEXT_PUBLIC_*",
+        "VITE_*"
+      ]
+    },
+
+    // ── test ────────────────────────────────────────────────────────────────
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "test/**",
+        "tests/**",
+        "__tests__/**",
+        "*.test.*",
+        "*.spec.*",
+        "vitest.config.*",
+        "jest.config.*"
+      ],
+      "outputs": ["coverage/**"],
+      "env": [
+        "TEST_DATABASE_URL",
+        "VITEST_*",
+        "JEST_*"
+      ]
+    },
+
+    // ── test:e2e ────────────────────────────────────────────────────────────
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "env": [
+        "PLAYWRIGHT_BASE_URL",
+        "CI"
+      ]
+    },
+
+    // ── lint ────────────────────────────────────────────────────────────────
+    "lint": {
+      "inputs": [
+        "src/**",
+        "*.{js,ts,jsx,tsx,cjs,mjs}",
+        ".eslintrc.*",
+        ".eslintignore"
+      ],
+      "outputs": []
+    },
+
+    // ── type-check ──────────────────────────────────────────────────────────
+    "type-check": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "tsconfig.json",
+        "tsconfig.*.json"
+      ],
+      "outputs": []
+    },
+
+    // ── clean ───────────────────────────────────────────────────────────────
+    "clean": {
+      "cache": false
+    },
+
+    // ── generate ────────────────────────────────────────────────────────────
+    // Code generation (GraphQL codegen, Prisma, OpenAPI, etc.)
+    "generate": {
+      "dependsOn": ["^generate"],
+      "inputs": [
+        "schema/**",
+        "*.graphql",
+        "openapi.yaml",
+        "prisma/**"
+      ],
+      "outputs": [
+        "src/generated/**",
+        "generated/**"
+      ]
+    },
+
+    // ── storybook ───────────────────────────────────────────────────────────
+    "storybook": {
+      "cache": false,
+      "persistent": true
+    },
+
+    // ── storybook:build ──────────────────────────────────────────────────────
+    "storybook:build": {
+      "dependsOn": ["^build"],
+      "outputs": ["storybook-static/**"]
+    }
+  }
+}
