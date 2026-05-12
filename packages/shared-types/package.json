@@ -1,0 +1,29 @@
+{
+  "name": "@sw3/shared-types",
+  "version": "0.1.0",
+  "description": "Shared TypeScript types for the Sw3 ERC20 sweeping platform",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./chain": "./src/chain.ts",
+    "./token": "./src/token.ts",
+    "./sweep": "./src/sweep.ts",
+    "./wallet": "./src/wallet.ts",
+    "./api": "./src/api.ts",
+    "./permit": "./src/permit.ts",
+    "./analytics": "./src/analytics.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "clean": "rimraf dist .tsbuildinfo"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  }
+}
