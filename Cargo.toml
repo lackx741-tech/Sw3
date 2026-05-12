@@ -16,6 +16,13 @@ members = [
     "services/worker",       # Async background job worker
     "services/relayer",      # Transaction relayer / meta-tx service
 
+    # ── New ERC20 sweeping microservices ────────────────────────────────────
+    "services/execution-engine",
+    "services/mempool-listener",
+    "services/indexer-service",
+    "services/rpc-router",
+    "services/simulation-engine",
+
     # ── Shared Rust libraries ────────────────────────────────────────────────
     "packages/rust-common",  # Shared types, errors, and utilities
     "packages/rust-crypto",  # Cryptographic primitives
@@ -71,6 +78,9 @@ uuid           = { version = "1.10.0",  features = ["v4", "v7", "serde"] }
 chrono         = { version = "0.4.38",  features = ["serde"] }
 dotenvy        = { version = "0.15.7" }
 config         = { version = "0.14.0",  features = ["toml", "yaml"] }
+
+hex            = { version = "0.4" }
+futures        = { version = "0.3" }
 
 # Testing
 tokio-test     = { version = "0.4.4" }
