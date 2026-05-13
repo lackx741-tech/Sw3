@@ -177,7 +177,7 @@ export class Authorizer {
         signer:   authorization.signer,
         nonce:    authorization.nonce,
         deadline: authorization.deadline,
-        calls:    authorization.calls.map((c) => ({
+        calls:    authorization.calls.map((c: DelegatedCall) => ({
           target: c.target,
           value:  c.value,
           data:   c.data,

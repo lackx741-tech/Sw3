@@ -135,8 +135,8 @@ impl NonceManager {
         use ethers::types::Address;
         use std::str::FromStr;
 
-        let addr = Address::from_str(address)
-            .map_err(|e| anyhow!("invalid address {address}: {e}"))?;
+        let addr =
+            Address::from_str(address).map_err(|e| anyhow!("invalid address {address}: {e}"))?;
 
         let provider = self.rpc.current_provider();
         let nonce = provider

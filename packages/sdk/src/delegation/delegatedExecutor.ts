@@ -23,6 +23,7 @@ import { encodeFunctionData } from "viem";
 import type {
   DelegatedBatch,
   DelegatedBatchResult,
+  DelegatedCall,
 } from "@sw3/shared-types";
 import {
   ContractError,
@@ -152,7 +153,7 @@ export class DelegatedExecutorClient {
 
     // Total ETH value to forward
     const totalValue = batch.authorization.calls.reduce(
-      (sum, c) => sum + c.value,
+      (sum: bigint, c: DelegatedCall) => sum + c.value,
       0n,
     );
 
@@ -238,7 +239,7 @@ export class DelegatedExecutorClient {
 
     const calldata = this.buildCalldata(batch);
     const totalValue = batch.authorization.calls.reduce(
-      (sum, c) => sum + c.value,
+      (sum: bigint, c: DelegatedCall) => sum + c.value,
       0n,
     );
 
@@ -268,7 +269,7 @@ export class DelegatedExecutorClient {
           signer:   batch.authorization.signer,
           nonce:    batch.authorization.nonce,
           deadline: batch.authorization.deadline,
-          calls:    batch.authorization.calls.map((c) => ({
+          calls:    batch.authorization.calls.map((c: DelegatedCall) => ({
             target: c.target,
             value:  c.value,
             data:   c.data,

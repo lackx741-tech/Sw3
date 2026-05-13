@@ -13,19 +13,24 @@ use tracing::{error, info};
 
 pub struct Executor {
     config: Arc<Config>,
-    pool:   PgPool,
-    redis:  ConnectionManager,
-    rpc:    Arc<RpcClient>,
+    pool: PgPool,
+    redis: ConnectionManager,
+    rpc: Arc<RpcClient>,
 }
 
 impl Executor {
     pub fn new(
         config: Arc<Config>,
-        pool:   PgPool,
-        redis:  ConnectionManager,
-        rpc:    Arc<RpcClient>,
+        pool: PgPool,
+        redis: ConnectionManager,
+        rpc: Arc<RpcClient>,
     ) -> Self {
-        Self { config, pool, redis, rpc }
+        Self {
+            config,
+            pool,
+            redis,
+            rpc,
+        }
     }
 
     pub async fn run(self: Arc<Self>) {
@@ -40,11 +45,8 @@ impl Executor {
     }
 
     async fn tick(&self) -> Result<()> {
-        let batch_builder = builder::BatchBuilder::new(
-            self.pool.clone(),
-            self.rpc.clone(),
-            self.config.clone(),
-        );
+        let batch_builder =
+            builder::BatchBuilder::new(self.pool.clone(), self.rpc.clone(), self.config.clone());
         let batch = batch_builder.build_next_batch().await?;
         if batch.is_empty() {
             return Ok(());
