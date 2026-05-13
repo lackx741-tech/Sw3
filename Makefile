@@ -30,7 +30,7 @@ GREEN  := \033[0;32m
 YELLOW := \033[0;33m
 NC     := \033[0m
 
-.PHONY: help setup dev infra services observability stop clean logs ps \
+.PHONY: help setup dev infra services rust-services observability stop clean logs ps \
         deploy-contracts migrate build-rust build-ts test-golden-path \
         format lint
 
@@ -81,6 +81,10 @@ infra: $(ENV_FILE)
 ## services: Start platform services (requires infra to be running)
 services: $(ENV_FILE)
 	$(COMPOSE) --env-file $(ENV_FILE) up -d auth-service api-gateway analytics-service billing-service webhook-service
+
+## rust-services: Build and start Rust services (execution-engine, simulation-engine, rpc-router, indexer-service)
+rust-services: $(ENV_FILE)
+	$(COMPOSE) --env-file $(ENV_FILE) up -d --build execution-engine simulation-engine rpc-router indexer-service
 
 ## observability: Start observability stack (prometheus, loki, grafana)
 observability: $(ENV_FILE)

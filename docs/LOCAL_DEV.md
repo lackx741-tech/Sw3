@@ -6,7 +6,7 @@
 |-----------|----------|----------------------------------------------|
 | Docker    | ≥ 25     | Docker Engine with Compose v2                |
 | pnpm      | ≥ 9.0    | `npm install -g pnpm`                        |
-| Rust      | 1.80+    | via rustup — `rustup show` to verify         |
+| Rust      | 1.79+    | via rustup — `rustup show` to verify         |
 | Foundry   | latest   | `curl -L https://foundry.paradigm.xyz | bash`|
 | Node.js   | ≥ 20     | via nvm recommended                          |
 
@@ -26,7 +26,7 @@ git clone https://github.com/lackx741-tech/Sw3.git && cd Sw3
 # 2. First-time setup (copies .env.local, checks deps)
 make setup
 
-# 3. Start the full local stack
+# 3. Start the full local stack (infra + Python services + Rust services + observability)
 make dev
 
 # 4. (first time) Deploy contracts to Anvil
@@ -39,27 +39,32 @@ make migrate
 make test-golden-path
 ```
 
+> **Note:** `make dev` builds the Rust services via Docker (execution-engine,
+> simulation-engine, rpc-router, indexer-service). The first build takes several
+> minutes; subsequent runs use the Docker layer cache.
+
 ---
 
 ## Service ports
 
-| Service            | Local URL                          | Notes                        |
-|--------------------|------------------------------------|------------------------------|
+| Service            | Local URL                          | Notes                         |
+|--------------------|------------------------------------|-------------------------------|
 | Dashboard          | http://localhost:3000              | `pnpm --filter @sw3/dashboard dev` |
-| API Gateway        | http://localhost:8000              | OpenAPI: /docs               |
-| Auth Service       | http://localhost:8001              | SIWE + JWT                   |
-| Analytics Service  | http://localhost:8004              |                              |
-| Billing Service    | http://localhost:8005              |                              |
-| Webhook Service    | http://localhost:8006              |                              |
-| Execution Engine   | http://localhost:8080              | Rust — run separately        |
-| Simulation Engine  | http://localhost:8082              | Rust — run separately        |
-| PostgreSQL         | localhost:5432                     | sw3 / sw3dev / sw3_dev       |
-| Redis              | localhost:6379                     |                              |
-| ClickHouse         | http://localhost:8123              | HTTP interface               |
-| Anvil (EVM)        | http://localhost:8545              | chain-id 31337               |
-| Prometheus         | http://localhost:9090              |                              |
-| Loki               | http://localhost:3100              |                              |
-| Grafana            | http://localhost:3333              | admin / admin                |
+| API Gateway        | http://localhost:8000              | OpenAPI: /docs                |
+| Auth Service       | http://localhost:8001              | SIWE + JWT                    |
+| Analytics Service  | http://localhost:8004              | /health, /metrics, /v1/events |
+| Billing Service    | http://localhost:8005              |                               |
+| Webhook Service    | http://localhost:8006              |                               |
+| Execution Engine   | http://localhost:8080              | Rust — /health /metrics       |
+| Simulation Engine  | http://localhost:8082              | Rust — /health /simulate      |
+| RPC Router         | http://localhost:9091              | Rust — /health (JSON-RPC)     |
+| PostgreSQL         | localhost:5432                     | sw3 / sw3dev / sw3_dev        |
+| Redis              | localhost:6379                     |                               |
+| ClickHouse         | http://localhost:8123              | HTTP interface                |
+| Anvil (EVM)        | http://localhost:8545              | chain-id 31337                |
+| Prometheus         | http://localhost:9090              |                               |
+| Loki               | http://localhost:3100              |                               |
+| Grafana            | http://localhost:3333              | admin / admin                 |
 
 ---
 
@@ -73,68 +78,52 @@ Dashboard (Next.js :3000)
     │
     ▼
 API Gateway (FastAPI :8000)
-    ├── /v1/auth/*   → auth-service (:8001)     — SIWE + JWT
-    ├── /v1/sweeps/* → execution-engine (:8080)  — Rust
-    ├── /v1/tokens/* → (stub)
-    ├── /v1/analytics/* → analytics-service (:8004)
-    ├── /v1/billing/* → billing-service (:8005)
-    └── /v1/webhooks/* → webhook-service (:8006)
+    ├── /v1/auth/*      → auth-service (:8001)          — SIWE + JWT
+    ├── /v1/sweeps/*    → execution-engine (:8080)       — Rust, sweep jobs
+    ├── /v1/simulate/*  → simulation-engine (:8082)      — Rust, tx simulation
+    ├── /v1/analytics/* → analytics-service (:8004)      — event logging
+    ├── /v1/billing/*   → billing-service (:8005)
+    └── /v1/webhooks/*  → webhook-service (:8006)
+
+Rust services
+    ├── execution-engine  (:8080) — sweep job CRUD + batch executor
+    ├── simulation-engine (:8082) — eth_call gas estimation
+    ├── rpc-router        (:9091) — JSON-RPC round-robin + health failover
+    └── indexer-service   (no HTTP) — balance polling background worker
 
 Infrastructure
     ├── PostgreSQL — sweep jobs, batch jobs
     ├── Redis      — nonce cache, JWT revocation, session state
-    ├── ClickHouse — analytics events
+    ├── ClickHouse — analytics events (schema migration pending)
     └── Anvil      — local EVM chain
 
 Observability
     ├── Prometheus → scrapes /metrics from all services
     ├── Loki       → log aggregation
-    └── Grafana    → dashboards (SW3 Golden Path)
+    └── Grafana    → dashboards
 ```
 
 ---
 
-## Golden path
+## Golden path (fully wired in this iteration)
 
-The one working end-to-end flow in this iteration:
+The complete end-to-end flow that can be exercised locally:
 
 ```
 1. Wallet connect (browser / cast)
-2. POST /v1/auth/nonce  {address}            → {nonce}
+2. POST /v1/auth/nonce  {address}                           → {nonce}
 3. Sign SIWE message with wallet
-4. POST /v1/auth/verify {message, signature, address}
-                                             → {token, refresh_token}
-5. POST /v1/sweeps (with Bearer token)       → create sweep job
-6. Execution engine polls for pending jobs, batches + submits to Anvil
-7. Indexer service records confirmed tx
-8. Analytics service logs event to ClickHouse
+4. POST /v1/auth/verify {message, signature, address}       → {token, refresh_token}
+5. POST /v1/simulate/   {from, to, data, value}             → {success, gas_estimate}
+6. POST /v1/sweeps/     {owner, token, amount, recipient}   → {id, status: "pending"}
+7. Execution engine polls DB → batches pending jobs → submits to Anvil
+8. Indexer service polls confirmed txs → updates Redis cache
+9. POST /v1/analytics/events {event_type, address, data}    → {accepted: true}
 ```
 
-The auth flow (steps 1–4) is fully implemented end-to-end.
-The execution path (steps 5–8) runs via the Rust execution-engine which
-connects to Anvil on port 8545 — start it with `cargo run -p execution-engine`.
-
----
-
-## Running Rust services
-
-The execution-engine and simulation-engine are Rust binaries and are **not**
-included in docker-compose (building multi-arch Rust images in compose adds
-significant startup time). Run them separately:
-
+Run the full path automatically with:
 ```bash
-# Terminal 1 — start infra first
-make infra
-
-# Terminal 2 — execution engine
-DATABASE_URL=postgresql://sw3:sw3dev@localhost:5432/sw3_dev \
-REDIS_URL=redis://localhost:6379/0 \
-RPC_URLS=http://localhost:8545 \
-cargo run -p execution-engine
-
-# Terminal 3 — simulation engine
-RPC_URL=http://localhost:8545 \
-cargo run -p simulation-engine
+make test-golden-path
 ```
 
 ---
@@ -165,6 +154,9 @@ cargo build
 
 # Solidity — sweeper contracts
 cd contracts/sweeper && forge build
+
+# Rust Docker images (also done automatically by make dev)
+make rust-services
 ```
 
 ---
@@ -203,31 +195,28 @@ Key variables to set for a fully working local stack:
 
 ## Known limitations (as of this PR)
 
-1. **Rust services not in docker-compose** — execution-engine and
-   simulation-engine must be started manually (see above).  Building Rust in
-   compose is feasible but adds rebuild times; deferred to next slice.
-
-2. **No EIP-7702 / Permit2 on Anvil** — the delegated executor and permit
+1. **No EIP-7702 / Permit2 on Anvil** — the delegated executor and permit
    router contracts are defined but not yet deployed in the local bootstrap.
    Only the Sweeper contract is deployed by `make deploy-contracts`.
 
-3. **SIWE `chain_id` field** — the `siwe` Python library is pinned to `>=2.1.0,<3.0.0`
+2. **SIWE `chain_id` field** — the `siwe` Python library is pinned to `>=2.1.0,<3.0.0`
    in `services/auth-service/requirements.txt`. The 2.x API uses `chain_id`.
    Before upgrading past 2.x, review the CHANGELOG for field name changes and
-   update `main.py` in auth-service accordingly. A test is recommended to
-   assert the field name hasn't changed after upgrades.
+   update `main.py` in auth-service accordingly.
 
-4. **ClickHouse schema** — the analytics ClickHouse tables are not yet auto-
-   migrated on startup.  Analytics events are silently dropped until tables
-   are created manually.  A migration script is planned for the next slice.
+3. **ClickHouse schema** — the analytics ClickHouse tables are not yet auto-
+   migrated on startup. Analytics events are logged as structured JSON and
+   return 202, but are **not** persisted to ClickHouse until the migration
+   script is applied manually. A migration target is planned for the next slice.
 
-5. **No end-to-end TLS** — all local services communicate over plain HTTP.
+4. **No end-to-end TLS** — all local services communicate over plain HTTP.
    Use a TLS-terminating reverse proxy (e.g., Caddy or nginx) for staging.
 
-6. **JWT public-key auth** — JWTs are HS256 (shared secret).  For multi-
+5. **JWT public-key auth** — JWTs are HS256 (shared secret). For multi-
    service production use, rotate to RS256 with a public/private key pair.
    The algorithm field in auth-service is configurable via `JWT_ALGORITHM`.
 
-7. **Execution engine correlation IDs** — the Rust services emit structured
-   JSON logs but do not yet inject an `x-request-id` through the full pipeline.
-   Added to the next slice.
+6. **Rust service build time** — the first `make dev` (or `make rust-services`)
+   builds four Rust Docker images from source. This takes 5–15 minutes on a
+   cold build depending on hardware. Subsequent builds use the Docker layer
+   cache and are much faster.

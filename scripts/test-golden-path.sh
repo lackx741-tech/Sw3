@@ -134,23 +134,117 @@ GW_NONCE_RESP=$(curl -sf -X POST \
 GW_NONCE=$(echo "$GW_NONCE_RESP" | jq -r '.nonce // empty')
 check "API GW /v1/auth/nonce proxy" "$([ -n "$GW_NONCE" ] && echo "ok" || echo "no nonce: $GW_NONCE_RESP")"
 
+# Check correlation ID is propagated in response headers
+CORR_ID=$(curl -sf -X POST \
+  -H "Content-Type: application/json" \
+  --data "{\"address\": \"$WALLET_ADDRESS\"}" \
+  -D - \
+  "$API_BASE/v1/auth/nonce" 2>/dev/null | grep -i "x-correlation-id" | tr -d '\r' | awk '{print $2}' || true)
+check "X-Correlation-ID in response" "$([ -n "$CORR_ID" ] && echo "ok" || echo "header missing")"
+
 echo ""
 
-# ─── 4. Execution engine ─────────────────────────────────────────────────────
-echo "Step 4 — Execution engine /health"
+# ─── 4. Simulation engine ────────────────────────────────────────────────────
+echo "Step 4 — Transaction simulation"
 
-check "Execution engine /health" "$(http_ok "http://localhost:8080/health" 2>/dev/null || echo "not running — start with: cargo run -p execution-engine")"
+check "Simulation engine /health" "$(http_ok "http://localhost:8082/health")"
+
+# 4a. Direct simulation
+SIM_RESP=$(curl -sf -X POST \
+  -H "Content-Type: application/json" \
+  --data "$(jq -n \
+    --arg from "$WALLET_ADDRESS" \
+    --arg to   "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" \
+    '{from: $from, to: $to, value: "0x0", data: "0x"}')" \
+  "http://localhost:8082/simulate" 2>/dev/null || echo '{}')
+SIM_SUCCESS=$(echo "$SIM_RESP" | jq -r '.success // empty')
+check "Direct POST /simulate" "$([ "$SIM_SUCCESS" = "true" ] && echo "ok" || echo "failed: $SIM_RESP")"
+
+# 4b. Via API Gateway
+GW_SIM_RESP=$(curl -sf -X POST \
+  -H "Content-Type: application/json" \
+  --data "$(jq -n \
+    --arg from "$WALLET_ADDRESS" \
+    --arg to   "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" \
+    '{from: $from, to: $to, value: "0x0", data: "0x"}')" \
+  "$API_BASE/v1/simulate/" 2>/dev/null || echo '{}')
+GW_SIM_SUCCESS=$(echo "$GW_SIM_RESP" | jq -r '.success // empty')
+check "API GW /v1/simulate proxy" "$([ "$GW_SIM_SUCCESS" = "true" ] && echo "ok" || echo "failed: $GW_SIM_RESP")"
 
 echo ""
 
-# ─── 5. Analytics ─────────────────────────────────────────────────────────────
-echo "Step 5 — Analytics service /health"
+# ─── 5. Execution engine ─────────────────────────────────────────────────────
+echo "Step 5 — Execution engine (sweep job lifecycle)"
+
+check "Execution engine /health" "$(http_ok "http://localhost:8080/health")"
+check "Execution engine /metrics" "$(http_ok "http://localhost:8080/metrics")"
+
+# 5a. Create sweep job (via API GW with JWT if available)
+AUTH_HEADER=""
+if [[ -n "$JWT" ]]; then
+  AUTH_HEADER="Authorization: Bearer $JWT"
+fi
+
+SWEEP_RESP=$(curl -sf -X POST \
+  -H "Content-Type: application/json" \
+  ${AUTH_HEADER:+-H "$AUTH_HEADER"} \
+  --data "$(jq -n \
+    --arg owner     "$WALLET_ADDRESS" \
+    --arg token     "0x0000000000000000000000000000000000000000" \
+    --arg amount    "1000000000000000000" \
+    --arg recipient "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" \
+    '{owner: $owner, token: $token, amount: $amount, recipient: $recipient}')" \
+  "$API_BASE/v1/sweeps/" 2>/dev/null || echo '{}')
+SWEEP_ID=$(echo "$SWEEP_RESP" | jq -r '.id // empty')
+check "Create sweep job via API GW" "$([ -n "$SWEEP_ID" ] && echo "ok" || echo "no id: $SWEEP_RESP")"
+
+# 5b. Retrieve sweep job by ID
+if [[ -n "$SWEEP_ID" ]]; then
+  FETCH_RESP=$(curl -sf \
+    ${AUTH_HEADER:+-H "$AUTH_HEADER"} \
+    "$API_BASE/v1/sweeps/$SWEEP_ID" 2>/dev/null || echo '{}')
+  FETCH_ID=$(echo "$FETCH_RESP" | jq -r '.id // empty')
+  check "Retrieve sweep job by ID" "$([ "$FETCH_ID" = "$SWEEP_ID" ] && echo "ok" || echo "mismatch: $FETCH_RESP")"
+else
+  echo "  ⚠ sweep job creation failed — skipping retrieve"
+fi
+
+echo ""
+
+# ─── 6. RPC Router ───────────────────────────────────────────────────────────
+echo "Step 6 — RPC router"
+
+check "RPC router /health" "$(http_ok "http://localhost:9091/health")"
+
+RPC_RESP=$(curl -sf -X POST \
+  -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+  "http://localhost:9091/" 2>/dev/null | jq -r '.result // empty' || true)
+check "RPC router proxies eth_blockNumber" "$([ -n "$RPC_RESP" ] && echo "ok" || echo "no result")"
+
+echo ""
+
+# ─── 7. Analytics ─────────────────────────────────────────────────────────────
+echo "Step 7 — Analytics event logging"
+
 check "Analytics service /health" "$(http_ok "http://localhost:8004/health")"
 
+# Fire an analytics event representing the completed golden path
+ANALYTICS_RESP=$(curl -sf -X POST \
+  -H "Content-Type: application/json" \
+  --data "$(jq -n \
+    --arg evt   "golden_path_smoke_test" \
+    --arg addr  "$WALLET_ADDRESS" \
+    --argjson ch "$CHAIN_ID" \
+    '{event_type: $evt, address: $addr, chain_id: $ch, data: {source: "test-golden-path.sh"}}')" \
+  "$API_BASE/v1/analytics/events" 2>/dev/null || echo '{}')
+ANALYTICS_ACCEPTED=$(echo "$ANALYTICS_RESP" | jq -r '.accepted // empty')
+check "Analytics event via API GW" "$([ "$ANALYTICS_ACCEPTED" = "true" ] && echo "ok" || echo "not accepted: $ANALYTICS_RESP")"
+
 echo ""
 
-# ─── 6. Observability ─────────────────────────────────────────────────────────
-echo "Step 6 — Observability stack"
+# ─── 8. Observability ─────────────────────────────────────────────────────────
+echo "Step 8 — Observability stack"
 check "Prometheus /-/healthy" "$(http_ok "http://localhost:9090/-/healthy")"
 check "Grafana /api/health"   "$(http_ok "http://localhost:3333/api/health")"
 check "Loki /ready"           "$(http_ok "http://localhost:3100/ready")"
