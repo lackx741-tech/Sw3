@@ -11,9 +11,19 @@ import {
   type IntegrationStatus,
 } from "../../../../integration/integration";
 
+function resolveHealthCheckTimeoutMs(): number {
+  const configured = Number(process.env["SW3_HEALTH_CHECK_TIMEOUT_MS"] ?? "4000");
+  if (!Number.isFinite(configured) || configured <= 0) {
+    return 4_000;
+  }
+  return Math.round(configured);
+}
+
+const HEALTH_CHECK_TIMEOUT_MS = resolveHealthCheckTimeoutMs();
+
 async function checkService(path: string, apiBaseUrl: string) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4_000);
+  const timeout = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS);
   try {
     const response = await fetch(`${apiBaseUrl}${path}`, {
       cache: "no-store",
@@ -35,14 +45,24 @@ async function checkService(path: string, apiBaseUrl: string) {
   }
 }
 
+async function checkFirstReachablePath(paths: [string, ...string[]], apiBaseUrl: string) {
+  for (const path of paths) {
+    const status = await checkService(path, apiBaseUrl);
+    if (status.ok) {
+      return status;
+    }
+  }
+  return checkService(paths[0], apiBaseUrl);
+}
+
 async function getIntegrationStatus(apiBaseUrl: string): Promise<IntegrationStatus> {
   const checks = await Promise.all([
     checkService("/health", apiBaseUrl).then((status) => ({ ...status, service: "api-gateway" })),
-    checkService("/v1/sweeps/sweeps", apiBaseUrl).then((status) => ({
+    checkFirstReachablePath(["/v1/sweeps", "/v1/sweeps/sweeps"], apiBaseUrl).then((status) => ({
       ...status,
       service: "sweeps",
     })),
-    checkService("/v1/tokens/tokens", apiBaseUrl).then((status) => ({
+    checkFirstReachablePath(["/v1/tokens", "/v1/tokens/tokens"], apiBaseUrl).then((status) => ({
       ...status,
       service: "tokens",
     })),

@@ -116,8 +116,12 @@ export function IntegrationDashboard() {
       try {
         setLoading(true);
         const response = await fetch("/api/integration/options", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(
+            `Failed to load integration options (HTTP ${response.status} ${response.statusText}).`,
+          );
+        }
         const payload = (await response.json()) as OptionsResponse;
-        if (!response.ok) throw new Error("Failed to load integration options.");
         setOptions(payload);
         setModalTool(payload.defaults.modalTool);
         setChainId(payload.defaults.chainId);
@@ -157,10 +161,18 @@ export function IntegrationDashboard() {
           apiBaseUrl,
         }),
       });
-      const payload = (await response.json()) as CompileResponse | { error: string };
-      if (!response.ok || !("compiledAt" in payload)) {
-        throw new Error("error" in payload ? payload.error : "Failed to compile integration.");
+      if (!response.ok) {
+        const failure = await response.json().catch(() => null);
+        const message =
+          typeof failure === "object" &&
+          failure !== null &&
+          "error" in failure &&
+          typeof failure.error === "string"
+            ? failure.error
+            : "Failed to compile integration.";
+        throw new Error(message);
       }
+      const payload = (await response.json()) as CompileResponse;
       setCompiled(payload);
     } catch (error: unknown) {
       setCompileError(error instanceof Error ? error.message : "Compilation failed.");

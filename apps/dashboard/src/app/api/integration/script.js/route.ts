@@ -54,8 +54,9 @@ export function GET(request: Request) {
         "Cache-Control": "public, max-age=60",
       },
     });
-  } catch {
-    return new NextResponse("// Unable to generate SW3 embed script.", {
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : "unknown_error";
+    return new NextResponse(`// Unable to generate SW3 embed script: ${detail}.`, {
       status: 400,
       headers: { "Content-Type": "application/javascript; charset=utf-8" },
     });

@@ -39,6 +39,8 @@ export const SELECTABLE_CONTRACT_KEYS = [
 
 export type SelectableContractKey = (typeof SELECTABLE_CONTRACT_KEYS)[number];
 
+const DEFAULT_API_BASE_URL = "https://api.sw3.io";
+
 const CONTRACT_LABELS: Record<SelectableContractKey, string> = {
   sweeper: "Sweeper Contract",
   permitRouter: "Permit Router",
@@ -48,6 +50,8 @@ const CONTRACT_LABELS: Record<SelectableContractKey, string> = {
 
 type ContractAddressMap = Record<SelectableContractKey, `0x${string}` | null>;
 
+// Keep these aligned with packages/config/src/contracts.ts.
+// Some values may intentionally remain placeholder until production deployments are finalized.
 const CONTRACT_ADDRESSES: Record<ChainId, ContractAddressMap> = {
   1: {
     sweeper: "0x1111111111111111111111111111111111111111",
@@ -124,7 +128,7 @@ export interface EmbedConfig {
 }
 
 export function getDefaultApiBaseUrl(): string {
-  return (process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:8000").replace(/\/$/, "");
+  return (process.env["NEXT_PUBLIC_API_URL"] ?? DEFAULT_API_BASE_URL).replace(/\/$/, "");
 }
 
 export function isEvmAddress(value: string): value is `0x${string}` {
@@ -222,14 +226,13 @@ export function buildScriptSource(config: EmbedConfig): string {
     host.style.color = "#0f172a";
 
     const title = document.createElement("h3");
-    title.textContent = "SW3 " + config.modalTool + " integration";
+    title.textContent = \`SW3 \${config.modalTool} integration\`;
     title.style.margin = "0 0 8px";
     title.style.fontSize = "16px";
     host.appendChild(title);
 
     const summary = document.createElement("p");
-    summary.textContent =
-      "Contract: " + config.contractLabel + " (" + config.contractAddress + ") · Chain: " + config.chainName;
+    summary.textContent = \`Contract: \${config.contractLabel} (\${config.contractAddress}) · Chain: \${config.chainName}\`;
     summary.style.margin = "0 0 12px";
     summary.style.fontSize = "13px";
     summary.style.color = "#475569";
@@ -250,7 +253,7 @@ export function buildScriptSource(config: EmbedConfig): string {
       try {
         const health = await fetch(config.apiBaseUrl + "/health");
         if (!health.ok) throw new Error("Backend not healthy");
-        button.textContent = "Connected · " + config.modalTool;
+        button.textContent = \`Connected · \${config.modalTool}\`;
       } catch (error) {
         button.textContent = "Retry connection";
       } finally {
