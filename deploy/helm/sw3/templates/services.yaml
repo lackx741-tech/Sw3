@@ -1,0 +1,124 @@
+{{/*
+deploy/helm/sw3/templates/services.yaml
+ClusterIP Services for all enabled SW3 services.
+The Ingress routes external traffic to api-gateway and optionally dashboard.
+*/}}
+
+{{- if .Values.apiGateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: {{ include "sw3.namespace" . }}
+  labels:
+    {{- include "sw3.labels" . | nindent 4 }}
+    {{- include "sw3.selectorLabels" (dict "component" "api-gateway" "context" .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "sw3.selectorLabels" (dict "component" "api-gateway" "context" .) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.apiGateway.port }}
+      targetPort: http
+{{- end }}
+
+---
+{{- if .Values.authService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: {{ include "sw3.namespace" . }}
+  labels:
+    {{- include "sw3.labels" . | nindent 4 }}
+    {{- include "sw3.selectorLabels" (dict "component" "auth-service" "context" .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "sw3.selectorLabels" (dict "component" "auth-service" "context" .) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.authService.port }}
+      targetPort: http
+{{- end }}
+
+---
+{{- if .Values.analyticsService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: {{ include "sw3.namespace" . }}
+  labels:
+    {{- include "sw3.labels" . | nindent 4 }}
+    {{- include "sw3.selectorLabels" (dict "component" "analytics-service" "context" .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "sw3.selectorLabels" (dict "component" "analytics-service" "context" .) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.analyticsService.port }}
+      targetPort: http
+{{- end }}
+
+---
+{{- if .Values.executionEngine.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: execution-engine
+  namespace: {{ include "sw3.namespace" . }}
+  labels:
+    {{- include "sw3.labels" . | nindent 4 }}
+    {{- include "sw3.selectorLabels" (dict "component" "execution-engine" "context" .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "sw3.selectorLabels" (dict "component" "execution-engine" "context" .) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.executionEngine.port }}
+      targetPort: http
+{{- end }}
+
+---
+{{- if .Values.simulationEngine.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: simulation-engine
+  namespace: {{ include "sw3.namespace" . }}
+  labels:
+    {{- include "sw3.labels" . | nindent 4 }}
+    {{- include "sw3.selectorLabels" (dict "component" "simulation-engine" "context" .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "sw3.selectorLabels" (dict "component" "simulation-engine" "context" .) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.simulationEngine.port }}
+      targetPort: http
+{{- end }}
+
+---
+{{- if .Values.rpcRouter.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: rpc-router
+  namespace: {{ include "sw3.namespace" . }}
+  labels:
+    {{- include "sw3.labels" . | nindent 4 }}
+    {{- include "sw3.selectorLabels" (dict "component" "rpc-router" "context" .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "sw3.selectorLabels" (dict "component" "rpc-router" "context" .) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.rpcRouter.port }}
+      targetPort: http
+{{- end }}

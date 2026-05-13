@@ -239,3 +239,12 @@ Key variables to set for a fully working local stack:
   Permit2 instance.
 - Production-grade JWT key management (RS256 key distribution/rotation).
 - End-to-end TLS between local services.
+
+---
+
+## Further reading
+
+| Doc | Contents |
+|-----|----------|
+| [docs/CI.md](CI.md) | GitHub Actions workflows — what they enforce and how to run checks locally |
+| [docs/STAGING.md](STAGING.md) | Helm chart deployment, required secrets, and remaining production gaps |

@@ -9,6 +9,9 @@
 | Solidity contracts    | ✅ `cd contracts/sweeper && forge build` — Sweeper + tests compile                                                 |
 | Local dev stack       | ✅ `make dev` — brings up Postgres, Redis, ClickHouse, Anvil, all Python services, Prometheus, Loki, Grafana       |
 | SIWE auth             | ✅ Real nonce → sign → verify → JWT implemented (was placeholder)                                                  |
+| CI (GitHub Actions)   | ✅ pnpm build, cargo build, forge build — enforced on every push and PR                                            |
+| Docker images         | ✅ All service Dockerfiles build reproducibly; validated on push to main                                            |
+| Staging Helm chart    | ✅ Minimal Helm chart for core services in `deploy/helm/sw3/`                                                      |
 
 ---
 
@@ -31,6 +34,10 @@ make test-golden-path
 
 See **[docs/LOCAL_DEV.md](docs/LOCAL_DEV.md)** for full service URLs, ports,
 architecture overview, and known limitations.
+
+See **[docs/CI.md](docs/CI.md)** for the GitHub Actions CI reference.
+
+See **[docs/STAGING.md](docs/STAGING.md)** for staging deployment with Helm.
 
 ---
 

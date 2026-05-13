@@ -1,0 +1,105 @@
+# .github/workflows/docker-build.yml
+# Validates that all service Docker images build successfully.
+#
+# Runs on:
+#   - push to main
+#   - manual dispatch (workflow_dispatch)
+#
+# This is intentionally kept separate from the fast CI workflow because
+# Rust multi-stage builds are expensive (5–15 min cold). Run it on main
+# merges and on demand; not on every PR.
+#
+# Images built (but not pushed):
+#   Python services:  api-gateway, auth-service, analytics-service,
+#                     billing-service, webhook-service
+#   Rust services:    execution-engine, simulation-engine, rpc-router,
+#                     indexer-service
+#   Dashboard:        apps/dashboard
+
+name: Docker build validation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-python-images:
+    name: Build Python service images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: api-gateway
+            context: services/api-gateway
+          - name: auth-service
+            context: services/auth-service
+          - name: analytics-service
+            context: services/analytics-service
+          - name: billing-service
+            context: services/billing-service
+          - name: webhook-service
+            context: services/webhook-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.service.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.context }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.service.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}
+
+  build-rust-images:
+    name: Build Rust service images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - execution-engine
+          - simulation-engine
+          - rpc-router
+          - indexer-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/${{ matrix.service }}/Dockerfile
+          push: false
+          cache-from: type=gha,scope=rust-${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=rust-${{ matrix.service }}
+
+  build-dashboard-image:
+    name: Build dashboard image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build dashboard
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/dashboard/Dockerfile
+          push: false
+          cache-from: type=gha,scope=dashboard
+          cache-to: type=gha,mode=max,scope=dashboard

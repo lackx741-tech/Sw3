@@ -1,0 +1,19 @@
+apiVersion: v2
+name: sw3
+description: SW3 enterprise ERC-20 sweeping platform — core services Helm chart
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+keywords:
+  - sw3
+  - erc20
+  - sweeper
+  - eip7702
+  - ethereum
+
+maintainers:
+  - name: lackx741-tech
+    url: https://github.com/lackx741-tech
+
+dependencies: []

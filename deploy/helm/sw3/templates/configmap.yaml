@@ -1,0 +1,30 @@
+{{/*
+deploy/helm/sw3/templates/configmap.yaml
+Non-secret, non-connection-string config shared across services.
+Secret values (JWT_SECRET, DATABASE_URL, REDIS_URL, etc.) live in sw3-secrets.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sw3-config
+  namespace: {{ include "sw3.namespace" . }}
+  labels:
+    {{- include "sw3.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Values.global.environment | quote }}
+  # Service discovery — Kubernetes DNS names within the namespace
+  AUTH_SERVICE_URL: "http://auth-service:{{ .Values.authService.port }}"
+  EXECUTION_ENGINE_URL: "http://execution-engine:{{ .Values.executionEngine.port }}"
+  SIMULATION_ENGINE_URL: "http://simulation-engine:{{ .Values.simulationEngine.port }}"
+  ANALYTICS_SERVICE_URL: "http://analytics-service:{{ .Values.analyticsService.port }}"
+  # Auth
+  JWT_ALGORITHM: {{ .Values.authService.env.JWT_ALGORITHM | quote }}
+  ACCESS_TOKEN_EXPIRE_MINUTES: {{ .Values.authService.env.ACCESS_TOKEN_EXPIRE_MINUTES | quote }}
+  REFRESH_TOKEN_EXPIRE_DAYS: {{ .Values.authService.env.REFRESH_TOKEN_EXPIRE_DAYS | quote }}
+  NONCE_TTL_SECONDS: {{ .Values.authService.env.NONCE_TTL_SECONDS | quote }}
+  # Execution engine
+  MAX_BATCH_SIZE: {{ .Values.executionEngine.env.MAX_BATCH_SIZE | quote }}
+  GAS_MULTIPLIER: {{ .Values.executionEngine.env.GAS_MULTIPLIER | quote }}
+  CONFIRMATION_BLOCKS: {{ .Values.executionEngine.env.CONFIRMATION_BLOCKS | quote }}
+  # API Gateway CORS — override per environment
+  CORS_ORIGINS: {{ .Values.apiGateway.env.CORS_ORIGINS | quote }}

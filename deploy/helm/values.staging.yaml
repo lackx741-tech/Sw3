@@ -1,0 +1,67 @@
+# deploy/helm/values.staging.yaml
+# Staging overrides for the SW3 Helm chart.
+#
+# Usage:
+#   helm upgrade --install sw3 ./deploy/helm/sw3 \
+#     -f deploy/helm/values.staging.yaml \
+#     --namespace sw3
+#
+# Pre-requisites:
+#   1. kubectl create namespace sw3
+#   2. Create sw3-secrets from deploy/staging.env.example (see that file)
+#   3. An nginx ingress controller running in the cluster
+#   4. Docker images pushed to your registry (set global.imageRegistry)
+
+global:
+  imageRegistry: "ghcr.io/lackx741-tech"
+  environment: staging
+
+ingress:
+  enabled: true
+  tls:
+    enabled: true
+    secretName: sw3-staging-tls
+  hosts:
+    api: api.sw3-staging.example.com
+    dashboard: app.sw3-staging.example.com
+
+apiGateway:
+  replicas: 1
+  image:
+    tag: "main"
+  env:
+    CORS_ORIGINS: "https://app.sw3-staging.example.com"
+    ENVIRONMENT: "staging"
+    PORT: "8000"
+
+authService:
+  replicas: 1
+  image:
+    tag: "main"
+
+analyticsService:
+  replicas: 1
+  image:
+    tag: "main"
+
+executionEngine:
+  replicas: 1
+  image:
+    tag: "main"
+  env:
+    CONFIRMATION_BLOCKS: "2"
+    MAX_BATCH_SIZE: "20"
+    GAS_MULTIPLIER: "1.3"
+    RUST_LOG: "info"
+    SERVER_HOST: "0.0.0.0"
+    SERVER_PORT: "8080"
+
+simulationEngine:
+  replicas: 1
+  image:
+    tag: "main"
+
+rpcRouter:
+  replicas: 1
+  image:
+    tag: "main"
