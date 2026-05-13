@@ -1,4 +1,5 @@
 pub mod builder;
+pub mod nonce_manager;
 pub mod submitter;
 
 use crate::config::Config;
@@ -12,17 +13,17 @@ use tracing::{error, info};
 
 pub struct Executor {
     config: Arc<Config>,
-    pool: PgPool,
-    redis: ConnectionManager,
-    rpc: Arc<RpcClient>,
+    pool:   PgPool,
+    redis:  ConnectionManager,
+    rpc:    Arc<RpcClient>,
 }
 
 impl Executor {
     pub fn new(
         config: Arc<Config>,
-        pool: PgPool,
-        redis: ConnectionManager,
-        rpc: Arc<RpcClient>,
+        pool:   PgPool,
+        redis:  ConnectionManager,
+        rpc:    Arc<RpcClient>,
     ) -> Self {
         Self { config, pool, redis, rpc }
     }
@@ -39,12 +40,12 @@ impl Executor {
     }
 
     async fn tick(&self) -> Result<()> {
-        let builder = builder::BatchBuilder::new(
+        let batch_builder = builder::BatchBuilder::new(
             self.pool.clone(),
             self.rpc.clone(),
             self.config.clone(),
         );
-        let batch = builder.build_next_batch().await?;
+        let batch = batch_builder.build_next_batch().await?;
         if batch.is_empty() {
             return Ok(());
         }
@@ -53,6 +54,7 @@ impl Executor {
             self.pool.clone(),
             self.rpc.clone(),
             self.config.clone(),
+            self.redis.clone(),
         );
         submitter.submit_batch(&batch).await?;
         Ok(())

@@ -8,6 +8,7 @@
 export * from "./analytics.js";
 export * from "./api.js";
 export * from "./chain.js";
+export * from "./delegation.js";
 export * from "./permit.js";
 export * from "./sweep.js";
 export * from "./token.js";

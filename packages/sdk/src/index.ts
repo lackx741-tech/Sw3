@@ -32,6 +32,10 @@ export * from "./execution/batchBuilder.js";
 export * from "./execution/executor.js";
 export * from "./execution/permit.js";
 
+// Delegation (EIP-7702-style)
+export * from "./delegation/authorizer.js";
+export * from "./delegation/delegatedExecutor.js";
+
 // RPC
 export * from "./rpc/provider.js";
 export * from "./rpc/retry.js";

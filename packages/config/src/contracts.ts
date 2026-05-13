@@ -34,6 +34,11 @@ export interface ContractAddresses {
    * This is the same across all EVM chains.
    */
   permit2: `0x${string}`;
+  /**
+   * EIP-7702-style delegated execution router.
+   * Accepts signed Authorization payloads and executes batched calls.
+   */
+  delegatedExecutor: `0x${string}` | null;
 }
 
 // ─── Multicall3 is deployed at the same address on all EVM chains ─────────────
@@ -59,6 +64,7 @@ export const CONTRACT_ADDRESSES: Readonly<
     feeRouter: "0x2222222222222222222222222222222222222222",
     permitRouter: "0x3333333333333333333333333333333333333333",
     permit2: PERMIT2,
+    delegatedExecutor: null,
   },
   [ChainId.Goerli]: {
     sweeper: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -66,6 +72,7 @@ export const CONTRACT_ADDRESSES: Readonly<
     feeRouter: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     permitRouter: "0xcccccccccccccccccccccccccccccccccccccccc",
     permit2: PERMIT2,
+    delegatedExecutor: null,
   },
   [ChainId.Sepolia]: {
     sweeper: "0xdddddddddddddddddddddddddddddddddddddddd",
@@ -73,6 +80,7 @@ export const CONTRACT_ADDRESSES: Readonly<
     feeRouter: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     permitRouter: "0xffffffffffffffffffffffffffffffffffffffff",
     permit2: PERMIT2,
+    delegatedExecutor: null,
   },
   [ChainId.Arbitrum]: {
     sweeper: "0x4444444444444444444444444444444444444444",
@@ -80,6 +88,7 @@ export const CONTRACT_ADDRESSES: Readonly<
     feeRouter: "0x5555555555555555555555555555555555555555",
     permitRouter: "0x6666666666666666666666666666666666666666",
     permit2: PERMIT2,
+    delegatedExecutor: null,
   },
   [ChainId.Optimism]: {
     sweeper: "0x7777777777777777777777777777777777777777",
@@ -87,6 +96,7 @@ export const CONTRACT_ADDRESSES: Readonly<
     feeRouter: "0x8888888888888888888888888888888888888888",
     permitRouter: "0x9999999999999999999999999999999999999999",
     permit2: PERMIT2,
+    delegatedExecutor: null,
   },
   [ChainId.Polygon]: {
     sweeper: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
@@ -94,6 +104,7 @@ export const CONTRACT_ADDRESSES: Readonly<
     feeRouter: "0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
     permitRouter: "0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
     permit2: PERMIT2,
+    delegatedExecutor: null,
   },
   [ChainId.Base]: {
     sweeper: "0xDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
@@ -101,6 +112,7 @@ export const CONTRACT_ADDRESSES: Readonly<
     feeRouter: "0xEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
     permitRouter: "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
     permit2: PERMIT2,
+    delegatedExecutor: null,
   },
 } as const;
 
