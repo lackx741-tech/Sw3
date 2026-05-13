@@ -57,7 +57,7 @@ make test-golden-path
 | Webhook Service    | http://localhost:8006              |                               |
 | Execution Engine   | http://localhost:8080              | Rust — /health /metrics       |
 | Simulation Engine  | http://localhost:8082              | Rust — /health /simulate      |
-| RPC Router         | http://localhost:9091              | Rust — /health (JSON-RPC)     |
+| RPC Router         | http://localhost:9091              | Rust — /health /metrics (JSON-RPC) |
 | PostgreSQL         | localhost:5432                     | sw3 / sw3dev / sw3_dev        |
 | Redis              | localhost:6379                     |                               |
 | ClickHouse         | http://localhost:8123              | HTTP interface                |
@@ -94,7 +94,7 @@ Rust services
 Infrastructure
     ├── PostgreSQL — sweep jobs, batch jobs
     ├── Redis      — nonce cache, JWT revocation, session state
-    ├── ClickHouse — analytics events (schema migration pending)
+    ├── ClickHouse — analytics events persistence
     └── Anvil      — local EVM chain
 
 Observability
@@ -114,11 +114,15 @@ The complete end-to-end flow that can be exercised locally:
 2. POST /v1/auth/nonce  {address}                           → {nonce}
 3. Sign SIWE message with wallet
 4. POST /v1/auth/verify {message, signature, address}       → {token, refresh_token}
-5. POST /v1/simulate/   {from, to, data, value}             → {success, gas_estimate}
-6. POST /v1/sweeps/     {owner, token, amount, recipient}   → {id, status: "pending"}
-7. Execution engine polls DB → batches pending jobs → submits to Anvil
-8. Indexer service polls confirmed txs → updates Redis cache
-9. POST /v1/analytics/events {event_type, address, data}    → {accepted: true}
+5. Verify local bootstrap contract wiring:
+   - `SWEEPER_CONTRACT_ADDRESS`
+   - `DELEGATED_EXECUTOR_ADDRESS`
+6. POST /v1/simulate/   {from, to, data, value}             → {success, gas_estimate}
+7. POST /v1/sweeps/     {owner, token, amount, recipient}   → {id, status: "pending"}
+8. Execution engine polls DB → batches pending jobs → submits to Anvil
+9. Indexer service polls confirmed txs → updates Redis cache
+10. POST /v1/analytics/events {event_type, address, data}   → {accepted: true, persisted: true|false}
+11. Validate analytics persistence in ClickHouse when available
 ```
 
 Run the full path automatically with:
@@ -168,12 +172,20 @@ make rust-services
 1. Waits for Anvil to be ready.
 2. `forge build` inside `contracts/sweeper`.
 3. `forge script script/Deploy.s.sol --broadcast --rpc-url http://localhost:8545`.
-4. Parses the deployed contract address from forge output.
-5. Writes `SWEEPER_CONTRACT_ADDRESS` and `NEXT_PUBLIC_CONTRACT_ADDRESS` to `.env.local`.
+4. `forge build` inside `contracts/eip7702`.
+5. `forge script contracts/eip7702/script/Deploy.s.sol --broadcast --rpc-url http://localhost:8545`.
+6. Parses the deployed contract addresses from forge output.
+7. Writes these vars to `.env.local`:
+   - `SWEEPER_CONTRACT_ADDRESS`
+   - `NEXT_PUBLIC_CONTRACT_ADDRESS`
+   - `NEXT_PUBLIC_SWEEPER_ADDRESS`
+   - `DELEGATED_EXECUTOR_ADDRESS`
+   - `NEXT_PUBLIC_DELEGATED_EXECUTOR_ADDRESS`
+   - `PERMIT2_ADDRESS` (canonical)
+   - `MULTICALL_ADDRESS`
 
-**Manual remaining step**: if `forge script` output format changes or parsing
-fails, manually copy the contract address from the forge output and set it in
-`.env.local`.
+If `forge script` output format changes and parsing fails, manually copy
+addresses from forge output and set them in `.env.local`.
 
 ---
 
@@ -195,19 +207,19 @@ Key variables to set for a fully working local stack:
 
 ## Known limitations (as of this PR)
 
-1. **No EIP-7702 / Permit2 on Anvil** — the delegated executor and permit
-   router contracts are defined but not yet deployed in the local bootstrap.
-   Only the Sweeper contract is deployed by `make deploy-contracts`.
+1. **Permit2 contract code is not deployed on local Anvil by default** — this
+   slice wires canonical `PERMIT2_ADDRESS` and deploys `DelegatedExecutor`, but
+   full local Permit2 execution still depends on deploying a Permit2-compatible
+   contract at that address.
 
 2. **SIWE `chain_id` field** — the `siwe` Python library is pinned to `>=2.1.0,<3.0.0`
    in `services/auth-service/requirements.txt`. The 2.x API uses `chain_id`.
    Before upgrading past 2.x, review the CHANGELOG for field name changes and
    update `main.py` in auth-service accordingly.
 
-3. **ClickHouse schema** — the analytics ClickHouse tables are not yet auto-
-   migrated on startup. Analytics events are logged as structured JSON and
-   return 202, but are **not** persisted to ClickHouse until the migration
-   script is applied manually. A migration target is planned for the next slice.
+3. **Analytics persistence requires ClickHouse availability** — analytics-service
+   degrades gracefully (`accepted: true, persisted: false`) when ClickHouse is
+   unavailable or writes fail.
 
 4. **No end-to-end TLS** — all local services communicate over plain HTTP.
    Use a TLS-terminating reverse proxy (e.g., Caddy or nginx) for staging.
@@ -220,3 +232,10 @@ Key variables to set for a fully working local stack:
    builds four Rust Docker images from source. This takes 5–15 minutes on a
    cold build depending on hardware. Subsequent builds use the Docker layer
    cache and are much faster.
+
+## Explicitly out of scope for this slice
+
+- Full local Permit2 deployment + full PermitRouter execution against that local
+  Permit2 instance.
+- Production-grade JWT key management (RS256 key distribution/rotation).
+- End-to-end TLS between local services.

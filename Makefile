@@ -11,8 +11,8 @@
 #   make infra              # start only infrastructure (postgres, redis, clickhouse, anvil)
 #   make services           # start platform services on top of infra
 #   make observability      # start prometheus, loki, grafana
-#   make deploy-contracts   # deploy Solidity contracts to Anvil
-#   make migrate            # run database migrations
+#   make deploy-contracts   # deploy Solidity contracts to Anvil (Sweeper + DelegatedExecutor)
+#   make migrate            # run PostgreSQL + ClickHouse migrations
 #   make logs               # tail all container logs
 #   make ps                 # show running containers
 #   make build-rust         # cargo build --release
@@ -112,7 +112,7 @@ deploy-contracts: $(ENV_FILE)
 	@echo -e "$(GREEN)→ Deploying contracts to Anvil (http://localhost:8545)...$(NC)"
 	@bash scripts/deploy-contracts.sh
 
-## migrate: Run PostgreSQL database migrations
+## migrate: Run PostgreSQL + ClickHouse migrations
 migrate:
 	@echo -e "$(GREEN)→ Running database migrations...$(NC)"
 	@bash scripts/migrate.sh

@@ -25,6 +25,7 @@ fi
 
 API_BASE="${API_BASE:-http://localhost:8000}"
 RPC_URL="${RPC_URL_LOCAL:-http://localhost:8545}"
+CLICKHOUSE_URL="${CLICKHOUSE_URL_LOCAL:-http://localhost:8123}"
 
 # Anvil test account #0
 WALLET_ADDRESS="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
@@ -70,6 +71,26 @@ ANVIL_BLOCK=$(curl -sf -X POST \
   --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
   "$RPC_URL" 2>/dev/null | jq -r '.result // empty' || true)
 check "Anvil /eth_blockNumber" "$([ -n "$ANVIL_BLOCK" ] && echo "ok" || echo "no response")"
+
+echo ""
+
+# ─── 1a. Contract bootstrap wiring ────────────────────────────────────────────
+echo "Step 1a — Local contract bootstrap wiring"
+
+check "SWEEPER_CONTRACT_ADDRESS configured" "$([ -n "${SWEEPER_CONTRACT_ADDRESS:-}" ] && echo "ok" || echo "missing in .env.local")"
+check "DELEGATED_EXECUTOR_ADDRESS configured" "$([ -n "${DELEGATED_EXECUTOR_ADDRESS:-}" ] && echo "ok" || echo "missing in .env.local")"
+
+if command -v cast >/dev/null 2>&1 && [[ -n "${DELEGATED_EXECUTOR_ADDRESS:-}" ]]; then
+  DELEGATED_NONCE_USED=$(cast call \
+    "$DELEGATED_EXECUTOR_ADDRESS" \
+    "isNonceUsed(address,uint256)(bool)" \
+    "$WALLET_ADDRESS" \
+    "0" \
+    --rpc-url "$RPC_URL" 2>/dev/null || true)
+  check "DelegatedExecutor is callable" "$([ "$DELEGATED_NONCE_USED" = "false" ] && echo "ok" || echo "unexpected response: ${DELEGATED_NONCE_USED:-empty}")"
+else
+  echo "  ⚠ cast missing or DELEGATED_EXECUTOR_ADDRESS unset — skipping DelegatedExecutor call check"
+fi
 
 echo ""
 
@@ -215,6 +236,7 @@ echo ""
 echo "Step 6 — RPC router"
 
 check "RPC router /health" "$(http_ok "http://localhost:9091/health")"
+check "RPC router /metrics" "$(http_ok "http://localhost:9091/metrics")"
 
 RPC_RESP=$(curl -sf -X POST \
   -H "Content-Type: application/json" \
@@ -225,7 +247,7 @@ check "RPC router proxies eth_blockNumber" "$([ -n "$RPC_RESP" ] && echo "ok" ||
 echo ""
 
 # ─── 7. Analytics ─────────────────────────────────────────────────────────────
-echo "Step 7 — Analytics event logging"
+echo "Step 7 — Analytics persistence"
 
 check "Analytics service /health" "$(http_ok "http://localhost:8004/health")"
 
@@ -240,6 +262,18 @@ ANALYTICS_RESP=$(curl -sf -X POST \
   "$API_BASE/v1/analytics/events" 2>/dev/null || echo '{}')
 ANALYTICS_ACCEPTED=$(echo "$ANALYTICS_RESP" | jq -r '.accepted // empty')
 check "Analytics event via API GW" "$([ "$ANALYTICS_ACCEPTED" = "true" ] && echo "ok" || echo "not accepted: $ANALYTICS_RESP")"
+
+# Ensure event persisted to ClickHouse when available.
+if [[ "$ANALYTICS_ACCEPTED" = "true" ]]; then
+  CLICKHOUSE_QUERY_URL="$CLICKHOUSE_URL/?database=${CLICKHOUSE_DATABASE:-sw3_analytics}&user=${CLICKHOUSE_USER:-default}"
+  if [[ -n "${CLICKHOUSE_PASSWORD:-}" ]]; then
+    CLICKHOUSE_QUERY_URL="${CLICKHOUSE_QUERY_URL}&password=${CLICKHOUSE_PASSWORD}"
+  fi
+  EVENT_COUNT=$(curl -sfS \
+    --data-binary "SELECT count() FROM analytics_events WHERE event_type = 'golden_path_smoke_test'" \
+    "$CLICKHOUSE_QUERY_URL" 2>/dev/null | tr -d '\n' || true)
+  check "Analytics event persisted to ClickHouse" "$([[ "${EVENT_COUNT:-0}" =~ ^[0-9]+$ && "$EVENT_COUNT" -ge 1 ]] && echo "ok" || echo "count=${EVENT_COUNT:-none}")"
+fi
 
 echo ""
 

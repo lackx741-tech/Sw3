@@ -44,12 +44,12 @@ wallet connect
   → POST /v1/sweeps (Bearer JWT) → sweep job
   → execution-engine polls       → batch + submit to Anvil
   → indexer-service records tx
-  → analytics-service logs event to ClickHouse
+  → analytics-service persists event to ClickHouse
 ```
 
 The auth leg (wallet → JWT) is fully implemented end-to-end.
-The execution leg (sweep job → Anvil tx) requires the Rust
-`execution-engine` to be running (`cargo run -p execution-engine`).
+The execution leg (sweep job → Anvil tx) runs inside `make dev`
+via the `execution-engine` container.
 
 ---
 
@@ -92,9 +92,5 @@ Open `http://localhost:3000`.
 See [docs/LOCAL_DEV.md#known-limitations](docs/LOCAL_DEV.md#known-limitations)
 for the full list. TL;DR:
 
-- Rust execution-engine and simulation-engine are not yet in docker-compose
-  (start them manually with `cargo run -p ...`)
-- EIP-7702 / Permit2 contracts not yet deployed in local bootstrap
-- ClickHouse analytics tables not yet auto-migrated
+- Permit2 contract code is not deployed on local Anvil by default
 - JWT uses HS256 — for production, rotate to RS256
-
