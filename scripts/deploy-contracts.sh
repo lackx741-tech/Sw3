@@ -58,13 +58,13 @@ parse_deploy_address() {
   local parsed=""
 
   if [[ -n "$explicit_label" ]]; then
-    parsed=$(echo "$output" | grep -oP "(?<=${explicit_label}: )0x[a-fA-F0-9]{40}" | head -1 || true)
+    parsed=$(echo "$output" | sed -nE "s/.*${explicit_label}: (0x[0-9a-fA-F]{40}).*/\1/p" | head -1 || true)
   fi
   if [[ -z "$parsed" ]]; then
-    parsed=$(echo "$output" | grep -oP '(?<=Contract Address: )0x[a-fA-F0-9]{40}' | head -1 || true)
+    parsed=$(echo "$output" | sed -nE 's/.*Contract Address: (0x[0-9a-fA-F]{40}).*/\1/p' | head -1 || true)
   fi
   if [[ -z "$parsed" ]]; then
-    parsed=$(echo "$output" | grep -oP '(?<=Deployed to: )0x[a-fA-F0-9]{40}' | head -1 || true)
+    parsed=$(echo "$output" | sed -nE 's/.*Deployed to: (0x[0-9a-fA-F]{40}).*/\1/p' | head -1 || true)
   fi
   echo "$parsed"
 }

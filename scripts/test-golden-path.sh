@@ -265,11 +265,16 @@ check "Analytics event via API GW" "$([ "$ANALYTICS_ACCEPTED" = "true" ] && echo
 
 # Ensure event persisted to ClickHouse when available.
 if [[ "$ANALYTICS_ACCEPTED" = "true" ]]; then
-  CLICKHOUSE_QUERY_URL="$CLICKHOUSE_URL/?database=${CLICKHOUSE_DATABASE:-sw3_analytics}&user=${CLICKHOUSE_USER:-default}"
+  CLICKHOUSE_QUERY_URL="$CLICKHOUSE_URL/?database=${CLICKHOUSE_DATABASE:-sw3_analytics}"
+  CLICKHOUSE_USER_VALUE="${CLICKHOUSE_USER:-default}"
+  CLICKHOUSE_AUTH_ARGS=()
   if [[ -n "${CLICKHOUSE_PASSWORD:-}" ]]; then
-    CLICKHOUSE_QUERY_URL="${CLICKHOUSE_QUERY_URL}&password=${CLICKHOUSE_PASSWORD}"
+    CLICKHOUSE_AUTH_ARGS=(--user "${CLICKHOUSE_USER_VALUE}:${CLICKHOUSE_PASSWORD}")
+  else
+    CLICKHOUSE_QUERY_URL="${CLICKHOUSE_QUERY_URL}&user=${CLICKHOUSE_USER_VALUE}"
   fi
   EVENT_COUNT=$(curl -sfS \
+    "${CLICKHOUSE_AUTH_ARGS[@]}" \
     --data-binary "SELECT count() FROM analytics_events WHERE event_type = 'golden_path_smoke_test'" \
     "$CLICKHOUSE_QUERY_URL" 2>/dev/null | tr -d '\n' || true)
   check "Analytics event persisted to ClickHouse" "$([[ "${EVENT_COUNT:-0}" =~ ^[0-9]+$ && "$EVENT_COUNT" -ge 1 ]] && echo "ok" || echo "count=${EVENT_COUNT:-none}")"

@@ -94,10 +94,6 @@ async fn metrics_handler(State(r): State<Arc<RpcRouter>>) -> impl IntoResponse {
         "rpc_router_provider_latency_ms_sum {}\n",
         latency_sum
     ));
-    body.push_str("# TYPE rpc_router_provider_healthy gauge\n");
-    body.push_str("# TYPE rpc_router_provider_latency_ms gauge\n");
-    body.push_str("# TYPE rpc_router_provider_failures gauge\n");
-
     for provider in providers {
         let escaped_url = provider.url.replace('\\', r"\\").replace('"', "\\\"");
         let healthy_val = if provider.healthy { 1 } else { 0 };

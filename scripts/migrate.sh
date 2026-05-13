@@ -84,8 +84,9 @@ for i in $(seq 1 30); do
 done
 
 if [[ -n "$CLICKHOUSE_PASSWORD" ]]; then
-  curl -sfS --data-binary "CREATE DATABASE IF NOT EXISTS ${CLICKHOUSE_DATABASE}" \
-    "$CLICKHOUSE_URL/?user=$CLICKHOUSE_USER&password=$CLICKHOUSE_PASSWORD" >/dev/null
+  curl -sfS --user "$CLICKHOUSE_USER:$CLICKHOUSE_PASSWORD" \
+    --data-binary "CREATE DATABASE IF NOT EXISTS ${CLICKHOUSE_DATABASE}" \
+    "$CLICKHOUSE_URL/" >/dev/null
 else
   curl -sfS --data-binary "CREATE DATABASE IF NOT EXISTS ${CLICKHOUSE_DATABASE}" \
     "$CLICKHOUSE_URL/?user=$CLICKHOUSE_USER" >/dev/null
@@ -94,8 +95,9 @@ fi
 for f in "$CLICKHOUSE_MIGRATIONS_DIR"/*.sql; do
   echo "  → Applying $f..."
   if [[ -n "$CLICKHOUSE_PASSWORD" ]]; then
-    curl -sfS --data-binary @"$f" \
-      "$CLICKHOUSE_URL/?database=$CLICKHOUSE_DATABASE&user=$CLICKHOUSE_USER&password=$CLICKHOUSE_PASSWORD" >/dev/null
+    curl -sfS --user "$CLICKHOUSE_USER:$CLICKHOUSE_PASSWORD" \
+      --data-binary @"$f" \
+      "$CLICKHOUSE_URL/?database=$CLICKHOUSE_DATABASE" >/dev/null
   else
     curl -sfS --data-binary @"$f" \
       "$CLICKHOUSE_URL/?database=$CLICKHOUSE_DATABASE&user=$CLICKHOUSE_USER" >/dev/null

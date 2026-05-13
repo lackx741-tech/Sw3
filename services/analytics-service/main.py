@@ -34,9 +34,13 @@ def _clickhouse_params(include_database: bool = True) -> dict[str, str]:
     params = {"user": CLICKHOUSE_USER}
     if include_database:
         params["database"] = CLICKHOUSE_DATABASE
-    if CLICKHOUSE_PASSWORD:
-        params["password"] = CLICKHOUSE_PASSWORD
     return params
+
+
+def _clickhouse_auth() -> tuple[str, str] | None:
+    if CLICKHOUSE_PASSWORD:
+        return (CLICKHOUSE_USER, CLICKHOUSE_PASSWORD)
+    return None
 
 
 async def _run_clickhouse_query(query: str, include_database: bool = True) -> None:
@@ -44,6 +48,7 @@ async def _run_clickhouse_query(query: str, include_database: bool = True) -> No
         response = await client.post(
             CLICKHOUSE_URL,
             params=_clickhouse_params(include_database=include_database),
+            auth=_clickhouse_auth(),
             content=query,
         )
         response.raise_for_status()
@@ -112,15 +117,16 @@ async def log_event(payload: EventPayload) -> dict:
         "event_type": payload.event_type,
         "address": payload.address,
         "chain_id": payload.chain_id,
-        "data_json": json.dumps(payload.data, separators=(",", ":"), sort_keys=True),
+        "data_json": json.dumps(payload.data, separators=(",", ":")),
         "correlation_id": payload.correlation_id,
-        "created_at": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
     }
     try:
         async with httpx.AsyncClient(timeout=CLICKHOUSE_TIMEOUT_SECONDS) as client:
             response = await client.post(
                 CLICKHOUSE_URL,
                 params={**_clickhouse_params(), "query": "INSERT INTO analytics_events FORMAT JSONEachRow"},
+                auth=_clickhouse_auth(),
                 content=f"{json.dumps(row)}\n",
             )
             response.raise_for_status()
