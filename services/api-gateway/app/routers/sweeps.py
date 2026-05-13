@@ -3,6 +3,6 @@ from fastapi import APIRouter
 router = APIRouter()
 
 
-@router.get("/sweeps" if "sweeps" != "health" else "/health")
+@router.get("/")
 async def sweeps_root():
     return {"status": "ok", "service": "sweeps"}
