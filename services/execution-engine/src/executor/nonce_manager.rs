@@ -3,7 +3,7 @@
 /// # Problem
 ///
 /// The Ethereum mempool requires each transaction from an address to carry a
-/// monotonically increasing nonce.  If two concurrent goroutines both call
+/// monotonically increasing nonce.  If two concurrent tasks both call
 /// `eth_getTransactionCount` at the same time they get the same pending nonce
 /// and one of the resulting transactions will be silently dropped or require a
 /// replacement.
