@@ -211,9 +211,11 @@ Key variables to set for a fully working local stack:
    router contracts are defined but not yet deployed in the local bootstrap.
    Only the Sweeper contract is deployed by `make deploy-contracts`.
 
-3. **SIWE `chain_id` field** — the `siwe` Python library version ≥ 2.x uses
-   `chain_id` (not `chainId`). If you upgrade the library to a major version
-   that changes field names, update `main.py` in auth-service accordingly.
+3. **SIWE `chain_id` field** — the `siwe` Python library is pinned to `>=2.1.0,<3.0.0`
+   in `services/auth-service/requirements.txt`. The 2.x API uses `chain_id`.
+   Before upgrading past 2.x, review the CHANGELOG for field name changes and
+   update `main.py` in auth-service accordingly. A test is recommended to
+   assert the field name hasn't changed after upgrades.
 
 4. **ClickHouse schema** — the analytics ClickHouse tables are not yet auto-
    migrated on startup.  Analytics events are silently dropped until tables

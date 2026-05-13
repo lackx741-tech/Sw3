@@ -139,7 +139,7 @@ echo ""
 # ─── 4. Execution engine ─────────────────────────────────────────────────────
 echo "Step 4 — Execution engine /health"
 
-check "Execution engine /health" "$(http_ok "http://localhost:8080/health" 2>/dev/null || echo "not running (start Rust service separately)")"
+check "Execution engine /health" "$(http_ok "http://localhost:8080/health" 2>/dev/null || echo "not running — start with: cargo run -p execution-engine")"
 
 echo ""
 

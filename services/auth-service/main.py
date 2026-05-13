@@ -228,11 +228,13 @@ async def verify_signature(req: VerifyRequest) -> TokenResponse:
     access_token = _issue_access_token(address, chain_id, jti)
     refresh = _issue_refresh_token(address, jti)
 
-    # Store refresh token in Redis so we can revoke it later
+    # Store refresh token in Redis so we can revoke it later.
+    # Include chain_id so we can restore it on refresh without re-decoding
+    # from the (potentially expired) access token.
     await redis.setex(
         _refresh_key(jti),
         settings.refresh_token_expire_days * 86400,
-        address,
+        f"{address}:{chain_id}",
     )
 
     return TokenResponse(
@@ -262,16 +264,22 @@ async def refresh_token_endpoint(req: RefreshRequest) -> TokenResponse:
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked or expired."
         )
 
-    # Rotate refresh token
+    # Rotate refresh token — restore chain_id from Redis
     new_jti = secrets.token_hex(16)
-    new_access = _issue_access_token(address, 0, new_jti)
+    stored_value = stored  # format: "address:chain_id" or legacy "address"
+    stored_parts = stored_value.split(":", 1)
+    try:
+        restored_chain_id = int(stored_parts[1]) if len(stored_parts) == 2 else 0
+    except (ValueError, IndexError):
+        restored_chain_id = 0
+    new_access = _issue_access_token(address, restored_chain_id, new_jti)
     new_refresh = _issue_refresh_token(address, new_jti)
 
     await redis.delete(_refresh_key(jti))
     await redis.setex(
         _refresh_key(new_jti),
         settings.refresh_token_expire_days * 86400,
-        address,
+        f"{address}:{restored_chain_id}",
     )
 
     return TokenResponse(

@@ -22,5 +22,5 @@ async def close_redis() -> None:
 
 def get_redis() -> aioredis.Redis:
     if _redis is None:
-        raise RuntimeError("Redis not initialised — call init_redis() first")
+        raise RuntimeError("Redis not initialized — call init_redis() first")
     return _redis
