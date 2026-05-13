@@ -6,19 +6,11 @@ from fastapi import APIRouter, HTTPException, Request
 
 from app.core.config import settings
 from app.core.http import get_http_client
-from app.middleware.correlation import get_correlation_id
+from app.core.proxy import build_proxy_headers
 
 router = APIRouter()
 
 _ANALYTICS_SERVICE = settings.analytics_service_url
-
-
-def _proxy_headers() -> dict:
-    headers: dict = {"Content-Type": "application/json"}
-    cid = get_correlation_id()
-    if cid:
-        headers["X-Correlation-ID"] = cid
-    return headers
 
 
 @router.get("/")
@@ -35,7 +27,7 @@ async def log_event(request: Request) -> dict:
     degraded flag rather than failing the caller.
     """
     body = await request.json()
-    headers = _proxy_headers()
+    headers = build_proxy_headers()
     try:
         resp = await get_http_client().post(
             f"{_ANALYTICS_SERVICE}/v1/events",

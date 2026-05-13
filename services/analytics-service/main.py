@@ -34,7 +34,7 @@ async def health() -> dict:
 
 
 @app.post("/v1/events", status_code=202)
-async def log_event(payload: EventPayload, request_headers: Any = None) -> dict:
+async def log_event(payload: EventPayload) -> dict:
     """Accept an analytics event.
 
     Logs the event as structured JSON. In a production deployment this would

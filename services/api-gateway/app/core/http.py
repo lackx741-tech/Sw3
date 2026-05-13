@@ -23,5 +23,5 @@ async def close_http_client() -> None:
 
 def get_http_client() -> httpx.AsyncClient:
     if _http_client is None:
-        raise RuntimeError("HTTP client not initialised")
+        raise RuntimeError("HTTP client not initialized")
     return _http_client

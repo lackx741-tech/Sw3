@@ -5,31 +5,18 @@ from fastapi import APIRouter, HTTPException, Request
 
 from app.core.config import settings
 from app.core.http import get_http_client
-from app.middleware.correlation import get_correlation_id
+from app.core.proxy import build_proxy_headers
 
 router = APIRouter()
 
 _EXECUTION_ENGINE = settings.execution_engine_url
 
 
-def _proxy_headers() -> dict:
-    """Build common headers forwarded to the execution engine."""
-    headers: dict = {"Content-Type": "application/json"}
-    cid = get_correlation_id()
-    if cid:
-        headers["X-Correlation-ID"] = cid
-    return headers
-
-
 @router.post("/", status_code=201)
 async def create_sweep_job(request: Request) -> dict:
     """Create a new sweep job via the execution engine."""
     body = await request.json()
-    headers = _proxy_headers()
-    # Forward the caller's Authorization header if present
-    auth_header = request.headers.get("Authorization")
-    if auth_header:
-        headers["Authorization"] = auth_header
+    headers = build_proxy_headers(request.headers.get("Authorization"))
     try:
         resp = await get_http_client().post(
             f"{_EXECUTION_ENGINE}/sweep-jobs",
@@ -51,10 +38,7 @@ async def create_sweep_job(request: Request) -> dict:
 @router.get("/{job_id}")
 async def get_sweep_job(job_id: str, request: Request) -> dict:
     """Retrieve a sweep job by ID via the execution engine."""
-    headers = _proxy_headers()
-    auth_header = request.headers.get("Authorization")
-    if auth_header:
-        headers["Authorization"] = auth_header
+    headers = build_proxy_headers(request.headers.get("Authorization"))
     try:
         resp = await get_http_client().get(
             f"{_EXECUTION_ENGINE}/sweep-jobs/{job_id}",

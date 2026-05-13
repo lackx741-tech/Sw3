@@ -1,11 +1,12 @@
 """Simulation router — proxies transaction simulation to the Rust simulation-engine."""
 from __future__ import annotations
 
+import httpx
 from fastapi import APIRouter, HTTPException, Request
 
 from app.core.config import settings
 from app.core.http import get_http_client
-from app.middleware.correlation import get_correlation_id
+from app.core.proxy import build_proxy_headers
 
 router = APIRouter()
 
@@ -20,10 +21,7 @@ async def simulate_transaction(request: Request) -> dict:
     Response:     {"success": bool, "gas_estimate": int, "revert_reason": str|null}
     """
     body = await request.json()
-    headers: dict = {"Content-Type": "application/json"}
-    cid = get_correlation_id()
-    if cid:
-        headers["X-Correlation-ID"] = cid
+    headers = build_proxy_headers()
     try:
         resp = await get_http_client().post(
             f"{_SIMULATION_ENGINE}/simulate",
