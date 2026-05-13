@@ -24,5 +24,3 @@ chrono = { workspace = true }
 uuid = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
-hex = { workspace = true }
-futures = { workspace = true }

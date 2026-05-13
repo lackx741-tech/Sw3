@@ -1,0 +1,43 @@
+[profile.default]
+src          = "src"
+test         = "test"
+script       = "script"
+out          = "out"
+cache_path   = "cache"
+libs         = ["../sweeper/lib"]
+solc_version = "0.8.24"
+optimizer    = true
+optimizer_runs = 1_000_000
+via_ir       = true
+evm_version  = "cancun"
+
+# ── Remappings ────────────────────────────────────────────────────────────────
+remappings = [
+    "@openzeppelin/contracts/=../sweeper/lib/openzeppelin-contracts/contracts/",
+    "forge-std/=../sweeper/lib/forge-std/src/",
+]
+
+# ── Fuzz / invariant settings ─────────────────────────────────────────────────
+[fuzz]
+runs = 10_000
+seed = "0x1337"
+
+[invariant]
+runs     = 1_000
+depth    = 100
+fail_on_revert = false
+
+# ── Formatting ─────────────────────────────────────────────────────────────────
+[fmt]
+line_length       = 120
+tab_width         = 4
+bracket_spacing   = true
+int_types         = "long"
+multiline_func_header = "params_first"
+quote_style       = "double"
+number_underscore = "thousands"
+
+# ── CI profile — stricter fuzz ────────────────────────────────────────────────
+[profile.ci]
+fuzz      = { runs = 50_000 }
+invariant = { runs = 5_000, depth = 200 }

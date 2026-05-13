@@ -1,4 +1,5 @@
 pub mod builder;
+pub mod nonce_manager;
 pub mod submitter;
 
 use crate::config::Config;
@@ -24,7 +25,12 @@ impl Executor {
         redis: ConnectionManager,
         rpc: Arc<RpcClient>,
     ) -> Self {
-        Self { config, pool, redis, rpc }
+        Self {
+            config,
+            pool,
+            redis,
+            rpc,
+        }
     }
 
     pub async fn run(self: Arc<Self>) {
@@ -39,12 +45,9 @@ impl Executor {
     }
 
     async fn tick(&self) -> Result<()> {
-        let builder = builder::BatchBuilder::new(
-            self.pool.clone(),
-            self.rpc.clone(),
-            self.config.clone(),
-        );
-        let batch = builder.build_next_batch().await?;
+        let batch_builder =
+            builder::BatchBuilder::new(self.pool.clone(), self.rpc.clone(), self.config.clone());
+        let batch = batch_builder.build_next_batch().await?;
         if batch.is_empty() {
             return Ok(());
         }
@@ -53,6 +56,7 @@ impl Executor {
             self.pool.clone(),
             self.rpc.clone(),
             self.config.clone(),
+            self.redis.clone(),
         );
         submitter.submit_batch(&batch).await?;
         Ok(())

@@ -10,23 +10,12 @@
 resolver = "2"   # Required for edition 2021; enables independent feature resolution
 
 members = [
-    # ── Backend services ────────────────────────────────────────────────────
-    "services/api",          # REST / GraphQL API server (Axum)
-    "services/indexer",      # Blockchain event indexer
-    "services/worker",       # Async background job worker
-    "services/relayer",      # Transaction relayer / meta-tx service
-
     # ── New ERC20 sweeping microservices ────────────────────────────────────
     "services/execution-engine",
     "services/mempool-listener",
     "services/indexer-service",
     "services/rpc-router",
     "services/simulation-engine",
-
-    # ── Shared Rust libraries ────────────────────────────────────────────────
-    "packages/rust-common",  # Shared types, errors, and utilities
-    "packages/rust-crypto",  # Cryptographic primitives
-    "packages/rust-db",      # Database access layer (SQLx / SeaORM)
 ]
 
 # Packages to exclude from workspace commands (e.g. generated or vendored code)
@@ -53,7 +42,7 @@ serde_json     = { version = "1.0.120" }
 sqlx           = { version = "0.7.4",   features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "migrate"] }
 
 # Blockchain / EVM
-ethers         = { version = "2.0.14",  features = ["rustls", "ws", "abigen", "compound-crypto"] }
+ethers         = { version = "2.0.14",  features = ["rustls", "ws", "abigen"] }
 alloy          = { version = "0.1.4",   features = ["full"] }
 
 # Redis
