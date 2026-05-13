@@ -69,9 +69,5 @@ scrape_configs:
         labels:
           service: simulation-engine
 
-  - job_name: rpc-router
-    metrics_path: /health
-    static_configs:
-      - targets: ["rpc-router:9091"]
-        labels:
-          service: rpc-router
+  # rpc-router does not yet expose a /metrics Prometheus endpoint.
+  # Add a scrape job here once metrics are instrumented in the Rust service.

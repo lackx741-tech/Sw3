@@ -18,6 +18,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.core.config import settings
+from app.core.http import close_http_client, init_http_client
 from app.core.logging import configure_logging
 from app.core.redis import close_redis, init_redis
 from app.middleware.correlation import CorrelationIDMiddleware
@@ -39,8 +40,10 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
     configure_logging()
     await init_redis()
+    await init_http_client()
     logger.info("API Gateway started", extra={"env": settings.environment})
     yield
+    await close_http_client()
     await close_redis()
     logger.info("API Gateway shutdown")
 

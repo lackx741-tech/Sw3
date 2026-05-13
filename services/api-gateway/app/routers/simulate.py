@@ -1,15 +1,13 @@
 """Simulation router — proxies transaction simulation to the Rust simulation-engine."""
 from __future__ import annotations
 
-import httpx
 from fastapi import APIRouter, HTTPException, Request
 
 from app.core.config import settings
+from app.core.http import get_http_client
 from app.middleware.correlation import get_correlation_id
 
 router = APIRouter()
-
-_client = httpx.AsyncClient(timeout=30.0)
 
 _SIMULATION_ENGINE = settings.simulation_engine_url
 
@@ -27,7 +25,7 @@ async def simulate_transaction(request: Request) -> dict:
     if cid:
         headers["X-Correlation-ID"] = cid
     try:
-        resp = await _client.post(
+        resp = await get_http_client().post(
             f"{_SIMULATION_ENGINE}/simulate",
             json=body,
             headers=headers,

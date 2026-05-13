@@ -5,11 +5,10 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 
 from app.core.config import settings
+from app.core.http import get_http_client
 from app.middleware.correlation import get_correlation_id
 
 router = APIRouter()
-
-_client = httpx.AsyncClient(timeout=10.0)
 
 _ANALYTICS_SERVICE = settings.analytics_service_url
 
@@ -38,7 +37,7 @@ async def log_event(request: Request) -> dict:
     body = await request.json()
     headers = _proxy_headers()
     try:
-        resp = await _client.post(
+        resp = await get_http_client().post(
             f"{_ANALYTICS_SERVICE}/v1/events",
             json=body,
             headers=headers,

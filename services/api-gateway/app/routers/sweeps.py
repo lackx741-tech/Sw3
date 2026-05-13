@@ -4,11 +4,10 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 
 from app.core.config import settings
+from app.core.http import get_http_client
 from app.middleware.correlation import get_correlation_id
 
 router = APIRouter()
-
-_client = httpx.AsyncClient(timeout=30.0)
 
 _EXECUTION_ENGINE = settings.execution_engine_url
 
@@ -32,7 +31,7 @@ async def create_sweep_job(request: Request) -> dict:
     if auth_header:
         headers["Authorization"] = auth_header
     try:
-        resp = await _client.post(
+        resp = await get_http_client().post(
             f"{_EXECUTION_ENGINE}/sweep-jobs",
             json=body,
             headers=headers,
@@ -57,7 +56,7 @@ async def get_sweep_job(job_id: str, request: Request) -> dict:
     if auth_header:
         headers["Authorization"] = auth_header
     try:
-        resp = await _client.get(
+        resp = await get_http_client().get(
             f"{_EXECUTION_ENGINE}/sweep-jobs/{job_id}",
             headers=headers,
         )
