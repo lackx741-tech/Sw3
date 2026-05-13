@@ -38,11 +38,11 @@ async function checkService(path: string, apiBaseUrl: string) {
 async function getIntegrationStatus(apiBaseUrl: string): Promise<IntegrationStatus> {
   const checks = await Promise.all([
     checkService("/health", apiBaseUrl).then((status) => ({ ...status, service: "api-gateway" })),
-    checkService("/v1/sweeps/sweeps", apiBaseUrl).then((status) => ({
+    checkService("/v1/sweeps/", apiBaseUrl).then((status) => ({
       ...status,
       service: "sweeps",
     })),
-    checkService("/v1/tokens/tokens", apiBaseUrl).then((status) => ({
+    checkService("/v1/tokens/", apiBaseUrl).then((status) => ({
       ...status,
       service: "tokens",
     })),

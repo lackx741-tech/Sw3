@@ -1,9 +1,61 @@
-# Sw3
+# Sw3 — Enterprise ERC-20 Sweeping Platform
+
+## Build status
+
+| Surface               | Status                                                                                                              |
+|-----------------------|---------------------------------------------------------------------------------------------------------------------|
+| TypeScript workspace  | ✅ `pnpm install && pnpm build` — all packages compile (stale path aliases removed)                                |
+| Rust workspace        | ✅ `cargo build` — all 5 service crates compile from root                                                          |
+| Solidity contracts    | ✅ `cd contracts/sweeper && forge build` — Sweeper + tests compile                                                 |
+| Local dev stack       | ✅ `make dev` — brings up Postgres, Redis, ClickHouse, Anvil, all Python services, Prometheus, Loki, Grafana       |
+| SIWE auth             | ✅ Real nonce → sign → verify → JWT implemented (was placeholder)                                                  |
+
+---
+
+## Quick start (local development)
+
+```bash
+# 1. Prerequisites: Docker ≥25, pnpm ≥9, Rust stable, Foundry
+make setup        # copy .env.local.example → .env.local, verify deps
+
+# 2. Start the full local stack
+make dev
+
+# 3. First-time: deploy contracts + run migrations
+make deploy-contracts
+make migrate
+
+# 4. Smoke test — exercises the golden path
+make test-golden-path
+```
+
+See **[docs/LOCAL_DEV.md](docs/LOCAL_DEV.md)** for full service URLs, ports,
+architecture overview, and known limitations.
+
+---
+
+## Golden path
+
+```
+wallet connect
+  → POST /v1/auth/nonce          (auth-service + Redis)
+  → sign SIWE message (wallet)
+  → POST /v1/auth/verify         → JWT
+  → POST /v1/sweeps (Bearer JWT) → sweep job
+  → execution-engine polls       → batch + submit to Anvil
+  → indexer-service records tx
+  → analytics-service logs event to ClickHouse
+```
+
+The auth leg (wallet → JWT) is fully implemented end-to-end.
+The execution leg (sweep job → Anvil tx) requires the Rust
+`execution-engine` to be running (`cargo run -p execution-engine`).
+
+---
 
 ## Dashboard integration builder
 
-The `apps/dashboard` app now includes an advanced integration dashboard for
-end-to-end SW3 embedding:
+The `apps/dashboard` app includes an advanced integration dashboard:
 
 1. Select the modal/tool flow (Sweep Modal, Wallet Button, Transaction Status).
 2. Select the target chain + contract (or provide a custom contract address).
@@ -23,9 +75,6 @@ Open `http://localhost:3000`.
 
 ### Embed on any website
 
-Use the generated snippet from the dashboard output section, which follows this
-pattern:
-
 ```html
 <script src="https://<your-dashboard-host>/api/integration/script.js?..."></script>
 <div id="sw3-embed-root" data-sw3-embed></div>
@@ -35,3 +84,17 @@ pattern:
   });
 </script>
 ```
+
+---
+
+## Known limitations
+
+See [docs/LOCAL_DEV.md#known-limitations](docs/LOCAL_DEV.md#known-limitations)
+for the full list. TL;DR:
+
+- Rust execution-engine and simulation-engine are not yet in docker-compose
+  (start them manually with `cargo run -p ...`)
+- EIP-7702 / Permit2 contracts not yet deployed in local bootstrap
+- ClickHouse analytics tables not yet auto-migrated
+- JWT uses HS256 — for production, rotate to RS256
+
