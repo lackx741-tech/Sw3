@@ -1,0 +1,167 @@
+# deploy/helm/sw3/values.yaml
+# Default values for the SW3 Helm chart.
+#
+# Override these in a values file per environment:
+#   helm upgrade --install sw3 ./deploy/helm/sw3 -f deploy/helm/values.staging.yaml
+#
+# Infrastructure (postgres, redis, clickhouse) is expected to be provisioned
+# separately (managed cloud services or existing cluster operators). Set the
+# connection strings in `externalSecrets` or via your secret manager.
+
+# ── Global ────────────────────────────────────────────────────────────────────
+global:
+  imageRegistry: ""      # e.g. "ghcr.io/lackx741-tech" — prefix applied to all images
+  imagePullSecrets: []   # e.g. [{ name: regcred }]
+  environment: staging   # development | staging | production
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace:
+  create: true
+  name: sw3
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+  # TLS: set host and secretName to enable HTTPS termination
+  tls:
+    enabled: false
+    secretName: sw3-tls
+  hosts:
+    api: api.sw3.example.com       # API Gateway
+    dashboard: app.sw3.example.com # Dashboard (if deployed)
+
+# ── Image defaults ─────────────────────────────────────────────────────────────
+# Individual services can override tag via <service>.image.tag
+image:
+  pullPolicy: IfNotPresent
+
+# ── External connection strings ───────────────────────────────────────────────
+# These should come from a sealed secret or external-secrets operator in prod.
+# For staging, populate deploy/staging.env.example → a k8s Secret named sw3-secrets.
+externalSecrets:
+  secretName: sw3-secrets  # pre-existing Secret containing connection strings
+
+# ── Services ──────────────────────────────────────────────────────────────────
+
+apiGateway:
+  enabled: true
+  image:
+    repository: sw3/api-gateway
+    tag: latest
+  replicas: 2
+  port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    CORS_ORIGINS: "https://app.sw3.example.com"
+    ENVIRONMENT: "staging"
+    PORT: "8000"
+
+authService:
+  enabled: true
+  image:
+    repository: sw3/auth-service
+    tag: latest
+  replicas: 2
+  port: 8001
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  env:
+    JWT_ALGORITHM: "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+    REFRESH_TOKEN_EXPIRE_DAYS: "30"
+    NONCE_TTL_SECONDS: "300"
+    ENVIRONMENT: "staging"
+    PORT: "8001"
+
+analyticsService:
+  enabled: true
+  image:
+    repository: sw3/analytics-service
+    tag: latest
+  replicas: 1
+  port: 8004
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  env:
+    CLICKHOUSE_PORT: "8123"
+    ENVIRONMENT: "staging"
+    PORT: "8004"
+
+executionEngine:
+  enabled: true
+  image:
+    repository: sw3/execution-engine
+    tag: latest
+  replicas: 1
+  port: 8080
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  env:
+    SERVER_HOST: "0.0.0.0"
+    SERVER_PORT: "8080"
+    MAX_BATCH_SIZE: "50"
+    GAS_MULTIPLIER: "1.2"
+    CONFIRMATION_BLOCKS: "2"
+    RUST_LOG: "info"
+
+simulationEngine:
+  enabled: true
+  image:
+    repository: sw3/simulation-engine
+    tag: latest
+  replicas: 1
+  port: 8082
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    LISTEN_ADDR: "0.0.0.0:8082"
+    GAS_MULTIPLIER: "1.2"
+    RUST_LOG: "info"
+
+rpcRouter:
+  enabled: true
+  image:
+    repository: sw3/rpc-router
+    tag: latest
+  replicas: 1
+  port: 9091
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  env:
+    LISTEN_ADDR: "0.0.0.0:9091"
+    RUST_LOG: "info"
