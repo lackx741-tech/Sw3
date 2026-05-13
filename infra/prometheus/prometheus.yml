@@ -68,3 +68,10 @@ scrape_configs:
       - targets: ["simulation-engine:8082"]
         labels:
           service: simulation-engine
+
+  - job_name: rpc-router
+    metrics_path: /health
+    static_configs:
+      - targets: ["rpc-router:9091"]
+        labels:
+          service: rpc-router

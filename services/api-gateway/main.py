@@ -20,11 +20,13 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.redis import close_redis, init_redis
+from app.middleware.correlation import CorrelationIDMiddleware
 from app.routers import (
     analytics,
     auth,
     billing,
     health,
+    simulate,
     sweeps,
     tokens,
     webhooks,
@@ -61,6 +63,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
+app.add_middleware(CorrelationIDMiddleware)
 
 # ── Prometheus metrics ──────────────────────────────────────────────────────
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
@@ -69,6 +72,7 @@ Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 app.include_router(health.router, tags=["health"])
 app.include_router(auth.router, prefix="/v1/auth", tags=["auth"])
 app.include_router(sweeps.router, prefix="/v1/sweeps", tags=["sweeps"])
+app.include_router(simulate.router, prefix="/v1/simulate", tags=["simulate"])
 app.include_router(tokens.router, prefix="/v1/tokens", tags=["tokens"])
 app.include_router(analytics.router, prefix="/v1/analytics", tags=["analytics"])
 app.include_router(billing.router, prefix="/v1/billing", tags=["billing"])
