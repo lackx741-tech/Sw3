@@ -1,0 +1,141 @@
+# .github/workflows/ci.yml
+# Main CI workflow — runs on every push and pull-request.
+#
+# Jobs:
+#   build-ts       — pnpm install, type-check, build
+#   build-rust     — cargo build, cargo clippy, cargo fmt
+#   build-solidity — forge build + forge test for sweeper and eip7702 contracts
+#
+# Caching:
+#   pnpm store   — keyed on pnpm-lock.yaml
+#   Cargo        — keyed on Cargo.lock
+#   Foundry      — keyed on foundry toolchain version
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── TypeScript / Node ───────────────────────────────────────────────────────
+  build-ts:
+    name: TypeScript — install, type-check, build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.4.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm type-check
+
+      - name: Build
+        run: pnpm build
+
+  # ── Rust ────────────────────────────────────────────────────────────────────
+  build-rust:
+    name: Rust — build, clippy, fmt
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # rust-toolchain.toml pins the channel; dtolnay/rust-toolchain reads it automatically
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.79.0"
+          components: rustfmt, clippy
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-registry-
+
+      - name: Cache Cargo build artifacts
+        uses: actions/cache@v4
+        with:
+          path: target/
+          key: cargo-build-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-build-${{ runner.os }}-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y pkg-config libssl-dev
+
+      - name: cargo build
+        run: cargo build
+
+      - name: cargo clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: cargo fmt check
+        run: cargo fmt --all -- --check
+
+  # ── Solidity / Foundry ──────────────────────────────────────────────────────
+  build-solidity:
+    name: Solidity — forge build + forge test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Cache Foundry build artifacts (sweeper)
+        uses: actions/cache@v4
+        with:
+          path: contracts/sweeper/out
+          key: forge-sweeper-${{ hashFiles('contracts/sweeper/src/**', 'contracts/sweeper/foundry.toml') }}
+
+      - name: Cache Foundry build artifacts (eip7702)
+        uses: actions/cache@v4
+        with:
+          path: contracts/eip7702/out
+          key: forge-eip7702-${{ hashFiles('contracts/eip7702/src/**', 'contracts/eip7702/foundry.toml') }}
+
+      - name: Install forge dependencies (sweeper)
+        run: forge install --no-commit
+        working-directory: contracts/sweeper
+
+      - name: forge build (sweeper)
+        run: forge build
+        working-directory: contracts/sweeper
+
+      - name: forge test (sweeper)
+        run: forge test --gas-report
+        working-directory: contracts/sweeper
+
+      - name: forge build (eip7702)
+        run: forge build
+        working-directory: contracts/eip7702
+
+      - name: forge test (eip7702)
+        run: forge test
+        working-directory: contracts/eip7702

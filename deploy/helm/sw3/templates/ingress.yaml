@@ -1,0 +1,40 @@
+{{/*
+deploy/helm/sw3/templates/ingress.yaml
+Routes external traffic to the api-gateway (and optionally the dashboard).
+Requires an ingress controller (e.g. nginx) installed in the cluster.
+Enable TLS by setting ingress.tls.enabled=true and providing a secretName
+containing the TLS certificate.
+*/}}
+
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sw3-ingress
+  namespace: {{ include "sw3.namespace" . }}
+  labels:
+    {{- include "sw3.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hosts.api }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.hosts.api }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  name: http
+{{- end }}

@@ -1,0 +1,77 @@
+# Prometheus configuration for SW3 local development
+# Scrapes all platform services that expose /metrics
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    environment: local
+
+# ── Alerting ──────────────────────────────────────────────────────────────────
+alerting:
+  alertmanagers: []
+
+# ── Scrape configs ────────────────────────────────────────────────────────────
+scrape_configs:
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: api-gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api-gateway:8000"]
+        labels:
+          service: api-gateway
+
+  - job_name: auth-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["auth-service:8001"]
+        labels:
+          service: auth-service
+
+  - job_name: analytics-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["analytics-service:8004"]
+        labels:
+          service: analytics-service
+
+  - job_name: billing-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["billing-service:8005"]
+        labels:
+          service: billing-service
+
+  - job_name: webhook-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["webhook-service:8006"]
+        labels:
+          service: webhook-service
+
+  # Rust services (axum /metrics endpoint)
+  - job_name: execution-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["execution-engine:8080"]
+        labels:
+          service: execution-engine
+
+  - job_name: simulation-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["simulation-engine:8082"]
+        labels:
+          service: simulation-engine
+
+  - job_name: rpc-router
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["rpc-router:9091"]
+        labels:
+          service: rpc-router

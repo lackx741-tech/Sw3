@@ -25,8 +25,8 @@ class Settings(BaseSettings):
 
     # Internal services
     auth_service_url: str = "http://auth-service:8001"
-    execution_engine_url: str = "http://execution-engine:8002"
-    simulation_engine_url: str = "http://simulation-engine:8003"
+    execution_engine_url: str = "http://execution-engine:8080"
+    simulation_engine_url: str = "http://simulation-engine:8082"
     analytics_service_url: str = "http://analytics-service:8004"
     billing_service_url: str = "http://billing-service:8005"
     webhook_service_url: str = "http://webhook-service:8006"

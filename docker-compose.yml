@@ -1,0 +1,383 @@
+# docker-compose.yml — SW3 local development stack
+#
+# Usage:
+#   cp .env.local.example .env.local
+#   make dev
+#
+# Services:
+#   Infrastructure:   postgres  redis  clickhouse  anvil
+#   Platform:         auth-service  api-gateway  analytics-service
+#                     billing-service  webhook-service
+#   Rust:             execution-engine  simulation-engine  rpc-router
+#                     indexer-service
+#   Observability:    prometheus  grafana  loki
+
+name: sw3
+
+# ─── Shared networks & volumes ────────────────────────────────────────────────
+networks:
+  sw3:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  clickhouse_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+# ─── Common health-check defaults ─────────────────────────────────────────────
+x-healthcheck-defaults: &hc
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 20s
+
+# ─── Common restart policy ────────────────────────────────────────────────────
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+
+  # ── Infrastructure ────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    <<: *restart
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sw3}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sw3dev}
+      POSTGRES_DB: ${POSTGRES_DB:-sw3_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sw3} -d ${POSTGRES_DB:-sw3_dev}"]
+
+  redis:
+    image: redis:7-alpine
+    <<: *restart
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "redis-cli", "ping"]
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24-alpine
+    <<: *restart
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-sw3_analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+    ports:
+      - "8123:8123"   # HTTP interface
+      - "9000:9000"   # Native TCP interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8123/ping || exit 1"]
+
+  # Local EVM chain — fixed mnemonic for reproducible test accounts
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    <<: *restart
+    entrypoint: ["anvil"]
+    command:
+      - "--host=0.0.0.0"
+      - "--port=8545"
+      - "--chain-id=31337"
+      - "--block-time=1"
+      - "--mnemonic=test test test test test test test test test test test junk"
+      - "--accounts=10"
+      - "--balance=10000"
+      - "--gas-limit=30000000"
+    ports:
+      - "8545:8545"
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8545 || exit 0"]
+
+  # ── Platform services ─────────────────────────────────────────────────────
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    <<: *restart
+    env_file: [.env.local]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-change-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      NONCE_TTL_SECONDS: ${NONCE_TTL_SECONDS:-300}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      PORT: "8001"
+    ports:
+      - "8001:8001"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8001/health || exit 1"]
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    <<: *restart
+    env_file: [.env.local]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://sw3:sw3dev@postgres:5432/sw3_dev
+      AUTH_SERVICE_URL: http://auth-service:8001
+      EXECUTION_ENGINE_URL: http://execution-engine:8080
+      SIMULATION_ENGINE_URL: http://simulation-engine:8082
+      ANALYTICS_SERVICE_URL: http://analytics-service:8004
+      BILLING_SERVICE_URL: http://billing-service:8005
+      WEBHOOK_SERVICE_URL: http://webhook-service:8006
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      PORT: "8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8000/health || exit 1"]
+
+  analytics-service:
+    build:
+      context: ./services/analytics-service
+      dockerfile: Dockerfile
+    <<: *restart
+    env_file: [.env.local]
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-sw3_analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      PORT: "8004"
+    ports:
+      - "8004:8004"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8004/health || exit 1"]
+
+  billing-service:
+    build:
+      context: ./services/billing-service
+      dockerfile: Dockerfile
+    <<: *restart
+    env_file: [.env.local]
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      PORT: "8005"
+    ports:
+      - "8005:8005"
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8005/health || exit 1"]
+
+  webhook-service:
+    build:
+      context: ./services/webhook-service
+      dockerfile: Dockerfile
+    <<: *restart
+    env_file: [.env.local]
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      PORT: "8006"
+    ports:
+      - "8006:8006"
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8006/health || exit 1"]
+
+  # ── Rust services ─────────────────────────────────────────────────────────
+
+  execution-engine:
+    build:
+      context: .
+      dockerfile: services/execution-engine/Dockerfile
+    <<: *restart
+    env_file: [.env.local]
+    environment:
+      DATABASE_URL: postgresql://sw3:sw3dev@postgres:5432/sw3_dev
+      REDIS_URL: redis://redis:6379/0
+      RPC_URLS: http://anvil:8545
+      CHAIN_ID: "31337"
+      SERVER_HOST: "0.0.0.0"
+      SERVER_PORT: "8080"
+      MAX_BATCH_SIZE: "${MAX_BATCH_SIZE:-50}"
+      GAS_MULTIPLIER: "${GAS_MULTIPLIER:-1.2}"
+      CONFIRMATION_BLOCKS: "${CONFIRMATION_BLOCKS:-1}"
+      SWEEPER_PRIVATE_KEY: "${SWEEPER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
+      SWEEPER_CONTRACT: "${SWEEPER_CONTRACT_ADDRESS:-0x0000000000000000000000000000000000000000}"
+      RUST_LOG: "${LOG_LEVEL:-info}"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      anvil:
+        condition: service_started
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/health || exit 1"]
+
+  simulation-engine:
+    build:
+      context: .
+      dockerfile: services/simulation-engine/Dockerfile
+    <<: *restart
+    env_file: [.env.local]
+    environment:
+      RPC_URL: http://anvil:8545
+      LISTEN_ADDR: "0.0.0.0:8082"
+      GAS_MULTIPLIER: "${GAS_MULTIPLIER:-1.2}"
+      RUST_LOG: "${LOG_LEVEL:-info}"
+    ports:
+      - "8082:8082"
+    depends_on:
+      anvil:
+        condition: service_started
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8082/health || exit 1"]
+
+  rpc-router:
+    build:
+      context: .
+      dockerfile: services/rpc-router/Dockerfile
+    <<: *restart
+    env_file: [.env.local]
+    environment:
+      RPC_URLS: http://anvil:8545
+      # Use port 9091 to avoid conflict with Prometheus host port 9090
+      LISTEN_ADDR: "0.0.0.0:9091"
+      RUST_LOG: "${LOG_LEVEL:-info}"
+    ports:
+      - "9091:9091"
+    depends_on:
+      anvil:
+        condition: service_started
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9091/health || exit 1"]
+
+  indexer-service:
+    build:
+      context: .
+      dockerfile: services/indexer-service/Dockerfile
+    <<: *restart
+    env_file: [.env.local]
+    environment:
+      DATABASE_URL: postgresql://sw3:sw3dev@postgres:5432/sw3_dev
+      REDIS_URL: redis://redis:6379/0
+      RPC_URL: http://anvil:8545
+      POLL_INTERVAL_SECS: "12"
+      RUST_LOG: "${LOG_LEVEL:-info}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      anvil:
+        condition: service_started
+    networks: [sw3]
+    # indexer-service has no HTTP listener; restart-on-failure is the health strategy
+    restart: on-failure
+
+  # ── Observability ─────────────────────────────────────────────────────────
+
+  prometheus:
+    image: prom/prometheus:v2.53.1
+    <<: *restart
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
+
+  loki:
+    image: grafana/loki:3.1.0
+    <<: *restart
+    volumes:
+      - ./infra/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
+
+  grafana:
+    image: grafana/grafana:11.1.4
+    <<: *restart
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3333:3000"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    networks: [sw3]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]

@@ -69,26 +69,20 @@
 
     // ── Path aliases ─────────────────────────────────────────────────────
     // Packages should re-declare the aliases relevant to their scope.
-    // These root-level aliases cover shared packages.
+    // These root-level aliases cover the packages that actually exist in this
+    // monorepo. Stale aliases for packages that do not exist have been removed
+    // to prevent spurious TS2307 "cannot find module" errors.
     "baseUrl": ".",
     "paths": {
-      // Shared packages
+      // Shared packages (all four exist under packages/)
       "@sw3/ui": ["packages/ui/src/index.ts"],
       "@sw3/ui/*": ["packages/ui/src/*"],
       "@sw3/config": ["packages/config/src/index.ts"],
       "@sw3/config/*": ["packages/config/src/*"],
-      "@sw3/utils": ["packages/utils/src/index.ts"],
-      "@sw3/utils/*": ["packages/utils/src/*"],
-      "@sw3/types": ["packages/types/src/index.ts"],
-      "@sw3/types/*": ["packages/types/src/*"],
-      "@sw3/hooks": ["packages/hooks/src/index.ts"],
-      "@sw3/hooks/*": ["packages/hooks/src/*"],
-      "@sw3/contracts": ["packages/contracts/src/index.ts"],
-      "@sw3/contracts/*": ["packages/contracts/src/*"],
-      "@sw3/db": ["packages/db/src/index.ts"],
-      "@sw3/db/*": ["packages/db/src/*"],
-      "@sw3/auth": ["packages/auth/src/index.ts"],
-      "@sw3/auth/*": ["packages/auth/src/*"],
+      "@sw3/sdk": ["packages/sdk/src/index.ts"],
+      "@sw3/sdk/*": ["packages/sdk/src/*"],
+      "@sw3/shared-types": ["packages/shared-types/src/index.ts"],
+      "@sw3/shared-types/*": ["packages/shared-types/src/*"],
 
       // Convenience aliases within a package (must also be set in each tsconfig)
       "@/*": ["./src/*"],
