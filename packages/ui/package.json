@@ -21,7 +21,7 @@
     "@sw3/shared-types": "workspace:*",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.417.0",
+    "lucide-react": "^1.17.0",
     "tailwind-merge": "^2.4.0"
   },
   "devDependencies": {
