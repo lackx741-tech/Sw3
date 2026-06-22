@@ -22,7 +22,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.417.0",
-    "tailwind-merge": "^2.4.0"
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
