@@ -65,7 +65,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache Cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
@@ -75,7 +75,7 @@ jobs:
           restore-keys: cargo-registry-
 
       - name: Cache Cargo build artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: target/
           key: cargo-build-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
@@ -109,13 +109,13 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Cache Foundry build artifacts (sweeper)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: contracts/sweeper/out
           key: forge-sweeper-${{ hashFiles('contracts/sweeper/src/**', 'contracts/sweeper/foundry.toml') }}
 
       - name: Cache Foundry build artifacts (eip7702)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: contracts/eip7702/out
           key: forge-eip7702-${{ hashFiles('contracts/eip7702/src/**', 'contracts/eip7702/foundry.toml') }}
