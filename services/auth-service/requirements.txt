@@ -7,4 +7,4 @@ python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 # Pin to 2.x — the 3.x release may rename fields (chain_id vs chainId).
 # Review CHANGELOG before upgrading past 2.x.
-siwe>=2.1.0,<3.0.0
+siwe>=4.4.0,<5.0.0
